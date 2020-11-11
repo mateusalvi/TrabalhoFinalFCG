@@ -228,7 +228,7 @@ int main(int argc, char* argv[])
     // Criamos uma janela do sistema operacional, com 800 colunas e 600 linhas
     // de pixels, e com título "INF01047 ...".
     GLFWwindow* window;
-    window = glfwCreateWindow(1280, 720, "Wizard - Mateus Salvi e Rafael Nunes", NULL, NULL);
+    window = glfwCreateWindow(800, 600, "Wizard - Mateus Salvi e Rafael Nunes", NULL, NULL);
     if (!window)
     {
         glfwTerminate();
@@ -259,7 +259,7 @@ int main(int argc, char* argv[])
     // redimensionada, por consequência alterando o tamanho do "framebuffer"
     // (região de memória onde são armazenados os pixels da imagem).
     glfwSetFramebufferSizeCallback(window, FramebufferSizeCallback);
-    FramebufferSizeCallback(window, 1280, 720); // Forçamos a chamada do callback acima, para definir g_ScreenRatio.
+    FramebufferSizeCallback(window, 800, 600); // Forçamos a chamada do callback acima, para definir g_ScreenRatio.
 
     // Imprimimos no terminal informações sobre a GPU do sistema
     const GLubyte *vendor      = glGetString(GL_VENDOR);
@@ -362,9 +362,14 @@ int main(int argc, char* argv[])
 
         //Inicializa posição e camera do jogador uma única vez, talvez botar antes do while
 
+        if(z < 2)
+            z = 2;
+
         camera_view_vector = glm::vec4(x,-y,z,0.0f); // Vetor "view", sentido para onde a câmera está virada
         glm::vec4 u = crossproduct(glm::vec4(0.0f,1.0f,0.0f,0.0f), camera_view_vector);
         glm::vec4 camera_up_vector = crossproduct(camera_view_vector, u); // Vetor "up" fixado para apontar para o "céu" (eito Y global)
+
+        printf("(%f,%f,%f)\n", camera_view_vector.x, camera_view_vector.y, camera_view_vector.z);
 
         //movimentação da camera
         if (playermovex != 0){
@@ -377,7 +382,7 @@ int main(int argc, char* argv[])
         //Gravidade aplicada no jogador (por enquanto não passa do chão sem testar colisão
         if (camera_position_c.y >= 0.5f)
         {
-            camera_position_c += + glm::vec4(0.0f,-15.0f,0.0f,0.0f)*deltatime;
+            camera_position_c += glm::vec4(0.0f,-15.0f,0.0f,0.0f)*deltatime;
         }
 
 
