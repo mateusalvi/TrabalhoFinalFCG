@@ -21,8 +21,10 @@ uniform mat4 projection;
 // Identificador que define qual objeto está sendo desenhado no momento
 #define SPHERE  0
 #define BUNNY   1
-#define PLANE   2
-#define CAMERA  3
+#define CAMERA  2
+#define CHAO    3
+#define PAREDE  4
+#define BOOK    5
 uniform int object_id;
 
 // Parâmetros da axis-aligned bounding box (AABB) do modelo
@@ -32,7 +34,7 @@ uniform vec4 bbox_max;
 // Variáveis para acesso das imagens de textura
 uniform sampler2D TextureImage0;
 uniform sampler2D TextureImage1;
-uniform sampler2D TextureImage2;
+
 
 // O valor de saída ("out") de um Fragment Shader é a cor final do fragmento.
 out vec3 color;
@@ -120,11 +122,17 @@ void main()
         U = (position_model.x - minx)/(maxx - minx);
         V = (position_model.y - miny)/(maxy - miny);
     }
-    else if ( object_id == PLANE )
+    else if ( object_id == CHAO)
     {
         // Coordenadas de textura do plano, obtidas do arquivo OBJ.
         U = texcoords.x*7;
         V = texcoords.y*7;
+    }
+    else if ( object_id == PAREDE)
+    {
+        // Coordenadas de textura do plano, obtidas do arquivo OBJ.
+        U = texcoords.x*10;
+        V = texcoords.y*10;
     }
 
     // Obtemos a refletância difusa a partir da leitura da imagem TextureImage0
@@ -137,9 +145,9 @@ void main()
 
     vec3 Kd1 = texture(TextureImage1, vec2(U,V)).rgb;
 
-    if(object_id == SPHERE)
+    if(object_id == PAREDE)
     {
-        color += (Kd1*(1-pow(lambert,0.1)));
+        color = Kd1;
     }
 
 
