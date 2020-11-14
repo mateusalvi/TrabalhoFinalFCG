@@ -225,14 +225,6 @@ bool colisao(SceneObject a, SceneObject b, glm::mat4 modelA, glm::mat4 modelB)
     b_new_min.y += modelB[3][1];
     b_new_min.z += modelB[3][2];
 
-    printf("A: (%f, %f, %f)\n", a_new_max.x, a_new_max.y, a_new_max.z);
-    printf("B: (%f, %f, %f)\n", b_new_max.x, b_new_max.y, b_new_max.z);
-    printf("-----------------\n\n");
-
-    float a_largura = a_new_max.x - a_new_min.x;
-    float b_largura = b_new_max.x - b_new_min.x;
-    float a_altura = a_new_max.y - a_new_min.y;
-    float b_altura = b_new_max.y - b_new_min.y;
 
     return(a_new_max.x > b_new_min.x &&
             a_new_min.x < b_new_max.x &&
