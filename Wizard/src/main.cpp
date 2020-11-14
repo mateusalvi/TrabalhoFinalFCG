@@ -422,7 +422,9 @@ int main(int argc, char* argv[])
         #define CAMERA 2
         #define CUBE   3
         #define PAREDE 4
-        #define BOOK   5
+        #define PAREDEM 5
+        #define PAREDEP 6
+        #define BOOK   7
 
         glm::mat4 model_bunny = Matrix_Identity(), model_plane = Matrix_Identity(), model_camera = Matrix_Identity(); // Transformação identidade de modelagem
         //model = Matrix_Translate(1.0f,0.0f,-8.0f);
@@ -583,21 +585,21 @@ int main(int argc, char* argv[])
                      * Matrix_Rotate_X(1.57f)
                      * Matrix_Scale(20.0f,0.5f,25.0f);
         glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model_parede));
-        glUniform1i(object_id_uniform, PAREDE);
+        glUniform1i(object_id_uniform, PAREDEM);
         DrawVirtualObject("parede");
 
         model_parede = Matrix_Translate(15.0f,10.0f,25.0f)
                      * Matrix_Rotate_X(1.57f)
                      * Matrix_Scale(20.0f,0.5f,25.0f);
         glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model_parede));
-        glUniform1i(object_id_uniform, PAREDE);
+        glUniform1i(object_id_uniform, PAREDEM);
         DrawVirtualObject("parede");
 
         model_parede = Matrix_Translate(0.0f,17.5f,25.0f)
                      * Matrix_Rotate_X(1.57f)
                      * Matrix_Scale(10.0f,0.5f,10.0f);
         glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model_parede));
-        glUniform1i(object_id_uniform, PAREDE);
+        glUniform1i(object_id_uniform, PAREDEP);
         DrawVirtualObject("parede");
 
         //segundas paredes das portas
@@ -605,21 +607,21 @@ int main(int argc, char* argv[])
                      * Matrix_Rotate_X(1.57f)
                      * Matrix_Scale(20.0f,0.5f,25.0f);
         glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model_parede));
-        glUniform1i(object_id_uniform, PAREDE);
+        glUniform1i(object_id_uniform, PAREDEM);
         DrawVirtualObject("parede");
 
         model_parede = Matrix_Translate(-35.0f,10.0f,75.0f)
                      * Matrix_Rotate_X(1.57f)
                      * Matrix_Scale(20.0f,0.5f,25.0f);
         glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model_parede));
-        glUniform1i(object_id_uniform, PAREDE);
+        glUniform1i(object_id_uniform, PAREDEM);
         DrawVirtualObject("parede");
 
         model_parede = Matrix_Translate(-50.0f,17.5f,75.0f)
                      * Matrix_Rotate_X(1.57f)
                      * Matrix_Scale(10.0f,0.5f,10.0f);
         glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model_parede));
-        glUniform1i(object_id_uniform, PAREDE);
+        glUniform1i(object_id_uniform, PAREDEP);
         DrawVirtualObject("parede");
 
         //altar

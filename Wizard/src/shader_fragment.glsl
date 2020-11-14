@@ -24,7 +24,10 @@ uniform mat4 projection;
 #define CAMERA  2
 #define CHAO    3
 #define PAREDE  4
-#define BOOK    5
+#define PAREDEM  5
+#define PAREDEP  6
+#define BOOK    7
+
 uniform int object_id;
 
 // Parâmetros da axis-aligned bounding box (AABB) do modelo
@@ -34,6 +37,7 @@ uniform vec4 bbox_max;
 // Variáveis para acesso das imagens de textura
 uniform sampler2D TextureImage0;
 uniform sampler2D TextureImage1;
+uniform sampler2D TextureImage2;
 
 
 // O valor de saída ("out") de um Fragment Shader é a cor final do fragmento.
@@ -134,6 +138,18 @@ void main()
         U = texcoords.x*10;
         V = texcoords.y*10;
     }
+    else if ( object_id == PAREDEM)
+    {
+        // Coordenadas de textura do plano, obtidas do arquivo OBJ.
+        U = texcoords.x*5;
+        V = texcoords.y*10;
+    }
+    else if ( object_id == PAREDEP)
+    {
+        // Coordenadas de textura do plano, obtidas do arquivo OBJ.
+        U = texcoords.x*2.34;
+        V = texcoords.y*4;
+    }
 
     // Obtemos a refletância difusa a partir da leitura da imagem TextureImage0
     vec3 Kd0 = texture(TextureImage0, vec2(U,V)).rgb;
@@ -143,13 +159,18 @@ void main()
 
     color = Kd0 * (lambert + 0.01);
 
-    vec3 Kd1 = texture(TextureImage1, vec2(U,V)).rgb;
-
     if(object_id == PAREDE)
     {
-        color = Kd1;
+        color = texture(TextureImage1, vec2(U,V)).rgb;
     }
-
+    if(object_id == PAREDEM)
+    {
+        color = texture(TextureImage1, vec2(U,V)).rgb;
+    }
+    if(object_id == PAREDEP)
+    {
+        color = texture(TextureImage1, vec2(U,V)).rgb;
+    }
 
     // Cor final com correção gamma, considerando monitor sRGB.
     // Veja https://en.wikipedia.org/w/index.php?title=Gamma_correction&oldid=751281772#Windows.2C_Mac.2C_sRGB_and_TV.2Fvideo_standard_gammas
