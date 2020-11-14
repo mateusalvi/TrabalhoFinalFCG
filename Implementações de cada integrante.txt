@@ -1,3 +1,7 @@
 Mateus Salvi:
 -Freecamera que não pode voar
 -Mouse restrito à janela, invisível e sem necessidade de manter o botão esquerdo apertado.
+
+Rafael O. Nunes:
+- Colisão cubo-cubo
+- Câmera envolta a um cubo deformado para realizar as colisões
