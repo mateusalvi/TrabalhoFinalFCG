@@ -19,9 +19,10 @@ uniform mat4 view;
 uniform mat4 projection;
 
 // Identificador que define qual objeto está sendo desenhado no momento
-#define SPHERE 0
-#define BUNNY  1
-#define PLANE  2
+#define SPHERE  0
+#define BUNNY   1
+#define PLANE   2
+#define CAMERA  3
 uniform int object_id;
 
 // Parâmetros da axis-aligned bounding box (AABB) do modelo
@@ -141,8 +142,14 @@ void main()
         color += (Kd1*(1-pow(lambert,0.1)));
     }
 
+
     // Cor final com correção gamma, considerando monitor sRGB.
     // Veja https://en.wikipedia.org/w/index.php?title=Gamma_correction&oldid=751281772#Windows.2C_Mac.2C_sRGB_and_TV.2Fvideo_standard_gammas
     color = pow(color, vec3(1.0,1.0,1.0)/2.2);
+
+    if(object_id == CAMERA)
+    {
+        color = vec3(0.0, 0.0, 0.0);
+    }
 }
 

@@ -48,6 +48,10 @@
 #include "utils.h"
 #include "matrices.h"
 
+// Constantes
+#define HEIGHT 800
+#define WIDTH 600
+
 // Estrutura que representa um modelo geométrico carregado a partir de um
 // arquivo ".obj". Veja https://en.wikipedia.org/wiki/Wavefront_.obj_file .
 struct ObjModel
@@ -75,6 +79,18 @@ struct ObjModel
     }
 };
 
+// Definimos uma estrutura que armazenará dados necessários para renderizar
+// cada objeto da cena virtual.
+struct SceneObject
+{
+    std::string  name;        // Nome do objeto
+    size_t       first_index; // Índice do primeiro vértice dentro do vetor indices[] definido em BuildTrianglesAndAddToVirtualScene()
+    size_t       num_indices; // Número de índices do objeto dentro do vetor indices[] definido em BuildTrianglesAndAddToVirtualScene()
+    GLenum       rendering_mode; // Modo de rasterização (GL_TRIANGLES, GL_TRIANGLE_STRIP, etc.)
+    GLuint       vertex_array_object_id; // ID do VAO onde estão armazenados os atributos do modelo
+    glm::vec3    bbox_min; // Axis-Aligned Bounding Box do objeto
+    glm::vec3    bbox_max;
+};
 
 // Declaração de funções utilizadas para pilha de matrizes de modelagem.
 void PushMatrix(glm::mat4 M);
@@ -82,7 +98,7 @@ void PopMatrix(glm::mat4& M);
 
 // Declaração de várias funções utilizadas em main().  Essas estão definidas
 // logo após a definição de main() neste arquivo.
-void BuildTrianglesAndAddToVirtualScene(ObjModel*); // Constrói representação de um ObjModel como malha de triângulos para renderização
+SceneObject BuildTrianglesAndAddToVirtualScene(ObjModel*); // Constrói representação de um ObjModel como malha de triângulos para renderização
 void ComputeNormals(ObjModel* model); // Computa normais de um ObjModel, caso não existam.
 void LoadShadersFromFiles(); // Carrega os shaders de vértice e fragmento, criando um programa de GPU
 void LoadTextureImage(const char* filename); // Função que carrega imagens de textura
@@ -120,19 +136,6 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mode
 void MouseButtonCallback(GLFWwindow* window, int button, int action, int mods);
 void CursorPosCallback(GLFWwindow* window, double xpos, double ypos);
 void ScrollCallback(GLFWwindow* window, double xoffset, double yoffset);
-
-// Definimos uma estrutura que armazenará dados necessários para renderizar
-// cada objeto da cena virtual.
-struct SceneObject
-{
-    std::string  name;        // Nome do objeto
-    size_t       first_index; // Índice do primeiro vértice dentro do vetor indices[] definido em BuildTrianglesAndAddToVirtualScene()
-    size_t       num_indices; // Número de índices do objeto dentro do vetor indices[] definido em BuildTrianglesAndAddToVirtualScene()
-    GLenum       rendering_mode; // Modo de rasterização (GL_TRIANGLES, GL_TRIANGLE_STRIP, etc.)
-    GLuint       vertex_array_object_id; // ID do VAO onde estão armazenados os atributos do modelo
-    glm::vec3    bbox_min; // Axis-Aligned Bounding Box do objeto
-    glm::vec3    bbox_max;
-};
 
 // Abaixo definimos variáveis globais utilizadas em várias funções do código.
 
@@ -199,6 +202,49 @@ GLuint g_NumLoadedTextures = 0;
 float playermovex = 0.0f;
 float playermovey = 0.0f;
 
+bool colisao(SceneObject a, SceneObject b, glm::mat4 modelA, glm::mat4 modelB)
+{
+    glm::vec4 a_new_max = glm::vec4(a.bbox_max.x, a.bbox_max.y, a.bbox_max.z, 0.0f) * modelA ;
+    glm::vec4 a_new_min = glm::vec4(a.bbox_min.x, a.bbox_min.y, a.bbox_min.z, 0.0f) * modelA;
+    glm::vec4 b_new_max = glm::vec4(b.bbox_max.x, b.bbox_max.y, b.bbox_max.z, 0.0f) * modelB;
+    glm::vec4 b_new_min = glm::vec4(b.bbox_min.x, b.bbox_min.y, b.bbox_min.z, 0.0f) * modelB;
+
+    a_new_max.x += modelA[3][0];
+    a_new_max.y += modelA[3][1];
+    a_new_max.z += modelA[3][2];
+
+    a_new_min.x += modelA[3][0];
+    a_new_min.y += modelA[3][1];
+    a_new_min.z += modelA[3][2];
+
+    b_new_max.x += modelB[3][0];
+    b_new_max.y += modelB[3][1];
+    b_new_max.z += modelB[3][2];
+
+    b_new_min.x += modelB[3][0];
+    b_new_min.y += modelB[3][1];
+    b_new_min.z += modelB[3][2];
+
+    printf("A: (%f, %f, %f)\n", a_new_max.x, a_new_max.y, a_new_max.z);
+    printf("B: (%f, %f, %f)\n", b_new_max.x, b_new_max.y, b_new_max.z);
+    printf("-----------------\n\n");
+
+    float a_largura = a_new_max.x - a_new_min.x;
+    float b_largura = b_new_max.x - b_new_min.x;
+    float a_altura = a_new_max.y - a_new_min.y;
+    float b_altura = b_new_max.y - b_new_min.y;
+
+    return(a_new_max.x > b_new_min.x &&
+            a_new_min.x < b_new_max.x &&
+            a_new_max.y > b_new_min.y &&
+            a_new_min.y < b_new_max.y &&
+            a_new_max.z > b_new_min.z &&
+            a_new_min.z < b_new_max.z);
+
+}
+
+
+
 int main(int argc, char* argv[])
 {
     // Inicializamos a biblioteca GLFW, utilizada para criar uma janela do
@@ -228,7 +274,7 @@ int main(int argc, char* argv[])
     // Criamos uma janela do sistema operacional, com 800 colunas e 600 linhas
     // de pixels, e com título "INF01047 ...".
     GLFWwindow* window;
-    window = glfwCreateWindow(800, 600, "Wizard - Mateus Salvi e Rafael Nunes", NULL, NULL);
+    window = glfwCreateWindow(HEIGHT, WIDTH, "Wizard - Mateus Salvi e Rafael Nunes", NULL, NULL);
     if (!window)
     {
         glfwTerminate();
@@ -259,7 +305,7 @@ int main(int argc, char* argv[])
     // redimensionada, por consequência alterando o tamanho do "framebuffer"
     // (região de memória onde são armazenados os pixels da imagem).
     glfwSetFramebufferSizeCallback(window, FramebufferSizeCallback);
-    FramebufferSizeCallback(window, 800, 600); // Forçamos a chamada do callback acima, para definir g_ScreenRatio.
+    FramebufferSizeCallback(window, HEIGHT, WIDTH); // Forçamos a chamada do callback acima, para definir g_ScreenRatio.
 
     // Imprimimos no terminal informações sobre a GPU do sistema
     const GLubyte *vendor      = glGetString(GL_VENDOR);
@@ -279,22 +325,22 @@ int main(int argc, char* argv[])
     LoadTextureImage("../../data/tc-earth_nightmap_citylights.gif"); // TextureImage1
 
     // Construímos a representação de objetos geométricos através de malhas de triângulos
-    ObjModel spheremodel("../../data/sphere.obj");
-    ComputeNormals(&spheremodel);
-    BuildTrianglesAndAddToVirtualScene(&spheremodel);
+    ObjModel cameramodel("../../data/camera.obj");
+    ComputeNormals(&cameramodel);
+    SceneObject cameraobject =  BuildTrianglesAndAddToVirtualScene(&cameramodel);
 
     ObjModel bunnymodel("../../data/bunny.obj");
     ComputeNormals(&bunnymodel);
-    BuildTrianglesAndAddToVirtualScene(&bunnymodel);
+    SceneObject bunnyobject =  BuildTrianglesAndAddToVirtualScene(&bunnymodel);
 
     ObjModel planemodel("../../data/plane.obj");
     ComputeNormals(&planemodel);
-    BuildTrianglesAndAddToVirtualScene(&planemodel);
+    SceneObject planeobject =  BuildTrianglesAndAddToVirtualScene(&planemodel);
 
     if ( argc > 1 )
     {
         ObjModel model(argv[1]);
-        BuildTrianglesAndAddToVirtualScene(&model);
+        SceneObject modelobject =  BuildTrianglesAndAddToVirtualScene(&model);
     }
 
     // Inicializamos o código para renderização de texto.
@@ -317,6 +363,7 @@ int main(int argc, char* argv[])
     //Inicializa posição e camera do jogador
     glm::vec4 camera_position_c  = glm::vec4(0.0f,10.0f,-10.0f,1.0f); // Ponto "c", centro da câmera
     glm::vec4 camera_view_vector = glm::vec4(1.0f,1.0f,0.0f,0.0f);
+    glm::vec4 passos = glm::vec4(0.0f,0.0f,0.0f,0.0f);
 
     float playerspeed = 1.5f;
     float timeprev = 0.0f;
@@ -362,21 +409,83 @@ int main(int argc, char* argv[])
 
         //Inicializa posição e camera do jogador uma única vez, talvez botar antes do while
 
-        if(z < 2)
-            z = 2;
-
         camera_view_vector = glm::vec4(x,-y,z,0.0f); // Vetor "view", sentido para onde a câmera está virada
         glm::vec4 u = crossproduct(glm::vec4(0.0f,1.0f,0.0f,0.0f), camera_view_vector);
         glm::vec4 camera_up_vector = crossproduct(camera_view_vector, u); // Vetor "up" fixado para apontar para o "céu" (eito Y global)
 
-        printf("(%f,%f,%f)\n", camera_view_vector.x, camera_view_vector.y, camera_view_vector.z);
+        #define SPHERE 0
+        #define BUNNY  1
+        #define PLANE  2
+        #define CAMERA  3
+
+        glm::mat4 model_bunny = Matrix_Identity(), model_plane = Matrix_Identity(), model_camera = Matrix_Identity(); // Transformação identidade de modelagem
+        //model = Matrix_Translate(1.0f,0.0f,-8.0f);
+
+        // Desenhamos o modelo do coelho
+        // Desenhamos o modelo do coelho
+        model_bunny = Matrix_Translate(1.0f,0.0f,0.0f);
+        glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model_bunny));
+        glUniform1i(object_id_uniform, BUNNY);
+        DrawVirtualObject("bunny");
+
+        // Desenhamos o plano do chão
+        model_plane = Matrix_Translate(0.0f,-1.1f,0.0f)
+                    * Matrix_Scale(10.0f,10.0f,10.0f);
+        glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model_plane));
+        glUniform1i(object_id_uniform, PLANE);
+        DrawVirtualObject("plane");
+
+        //printf("(%f,%f,%f)\n", camera_view_vector.x, camera_view_vector.y, camera_view_vector.z);
+
+        // Desenhamos o modelo da esfera
+            model_camera = Matrix_Translate(1.0f,0.0f,-10.0f)
+                        * Matrix_Translate(passos.x, passos.y, passos.z);
+                        //* Matrix_Translate(x, -y, z);
+
+            glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model_camera));
+            glUniform1i(object_id_uniform, CAMERA);
 
         //movimentação da camera
         if (playermovex != 0){
+            passos += playermovex*camera_view_vector*glm::vec4(1.0f,0.0f,1.0f,1.0f)*playerspeed*deltatime;
+
             camera_position_c += playermovex*camera_view_vector*glm::vec4(1.0f,0.0f,1.0f,1.0f)*playerspeed*deltatime; //vec4 para não se mover para cima, zerando a componente Y
+            //model = Matrix_Translate(passos.x, passos.y, passos.z);
+
+            // Desenhamos o modelo da esfera
+            model_camera = Matrix_Translate(1.0f,0.0f,-10.0f)
+                        * Matrix_Translate(passos.x, passos.y, passos.z);
+                         //* Matrix_Translate(x, -y, z);
+
+            glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model_camera));
+            glUniform1i(object_id_uniform, CAMERA);
+
+            if(colisao(g_VirtualScene["bunny"], g_VirtualScene["camera"], model_bunny, model_camera))
+            {
+                passos -= playermovex*camera_view_vector*glm::vec4(1.0f,0.0f,1.0f,1.0f)*playerspeed*deltatime;
+                camera_position_c -= playermovex*camera_view_vector*glm::vec4(1.0f,0.0f,1.0f,1.0f)*playerspeed*deltatime;
+            }
+
         }
         if (playermovey != 0){
+            passos += playermovey*u*glm::vec4(1.0f,0.0f,1.0f,1.0f)*playerspeed*deltatime;
+
             camera_position_c += playermovey*u*glm::vec4(1.0f,0.0f,1.0f,1.0f)*playerspeed*deltatime; //vec4 para não se mover para cima, zerando a componente Y
+
+            // Desenhamos o modelo da esfera
+            model_camera =  Matrix_Translate(1.0f,0.0f,-10.0f)
+                        * Matrix_Translate(passos.x, passos.y, passos.z);
+                        //* Matrix_Translate(x, -y, z);
+
+            glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model_camera));
+            glUniform1i(object_id_uniform, CAMERA);
+
+            if(colisao(g_VirtualScene["bunny"], g_VirtualScene["camera"], model_bunny, model_camera))
+            {
+                passos -= playermovey*u*glm::vec4(1.0f,0.0f,1.0f,1.0f)*playerspeed*deltatime;
+                camera_position_c -= playermovey*u*glm::vec4(1.0f,0.0f,1.0f,1.0f)*playerspeed*deltatime;
+            }
+
         }
 
         //Gravidade aplicada no jogador (por enquanto não passa do chão sem testar colisão
@@ -419,40 +528,12 @@ int main(int argc, char* argv[])
             projection = Matrix_Orthographic(l, r, b, t, nearplane, farplane);
         }
 
-        glm::mat4 model = Matrix_Identity(); // Transformação identidade de modelagem
-
         // Enviamos as matrizes "view" e "projection" para a placa de vídeo
         // (GPU). Veja o arquivo "shader_vertex.glsl", onde estas são
         // efetivamente aplicadas em todos os pontos.
         glUniformMatrix4fv(view_uniform       , 1 , GL_FALSE , glm::value_ptr(view));
         glUniformMatrix4fv(projection_uniform , 1 , GL_FALSE , glm::value_ptr(projection));
 
-        #define SPHERE 0
-        #define BUNNY  1
-        #define PLANE  2
-
-        // Desenhamos o modelo da esfera
-        model = Matrix_Translate(-1.0f,0.0f,0.0f)
-              * Matrix_Rotate_Z(0.6f)
-              * Matrix_Rotate_X(0.2f)
-              * Matrix_Rotate_Y(g_AngleY + (float)glfwGetTime() * 0.1f);
-        glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
-        glUniform1i(object_id_uniform, SPHERE);
-        DrawVirtualObject("sphere");
-
-        // Desenhamos o modelo do coelho
-        model = Matrix_Translate(1.0f,0.0f,0.0f)
-              * Matrix_Rotate_X(g_AngleX + (float)glfwGetTime() * 0.1f);
-        glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
-        glUniform1i(object_id_uniform, BUNNY);
-        DrawVirtualObject("bunny");
-
-        // Desenhamos o plano do chão
-        model = Matrix_Translate(0.0f,-1.1f,0.0f)
-                * Matrix_Scale(10.0f,10.0f,10.0f);
-        glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
-        glUniform1i(object_id_uniform, PLANE);
-        DrawVirtualObject("plane");
 
         // Pegamos um vértice com coordenadas de modelo (0.5, 0.5, 0.5, 1) e o
         // passamos por todos os sistemas de coordenadas armazenados nas
@@ -714,9 +795,10 @@ void ComputeNormals(ObjModel* model)
 }
 
 // Constrói triângulos para futura renderização a partir de um ObjModel.
-void BuildTrianglesAndAddToVirtualScene(ObjModel* model)
+SceneObject BuildTrianglesAndAddToVirtualScene(ObjModel* model)
 {
     GLuint vertex_array_object_id;
+    SceneObject theobject;
     glGenVertexArrays(1, &vertex_array_object_id);
     glBindVertexArray(vertex_array_object_id);
 
@@ -790,7 +872,6 @@ void BuildTrianglesAndAddToVirtualScene(ObjModel* model)
 
         size_t last_index = indices.size() - 1;
 
-        SceneObject theobject;
         theobject.name           = model->shapes[shape].name;
         theobject.first_index    = first_index; // Primeiro índice
         theobject.num_indices    = last_index - first_index + 1; // Número de indices
@@ -855,6 +936,9 @@ void BuildTrianglesAndAddToVirtualScene(ObjModel* model)
     // "Desligamos" o VAO, evitando assim que operações posteriores venham a
     // alterar o mesmo. Isso evita bugs.
     glBindVertexArray(0);
+
+    return theobject;
+
 }
 
 // Carrega um Vertex Shader de um arquivo GLSL. Veja definição de LoadShader() abaixo.
