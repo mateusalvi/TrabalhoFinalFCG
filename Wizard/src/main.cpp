@@ -350,6 +350,10 @@ int main(int argc, char* argv[])
     ComputeNormals(&flymodel);
     SceneObject flyobject =  BuildTrianglesAndAddToVirtualScene(&flymodel);
 
+    ObjModel spheremodel("../../data/sphere.obj");
+    ComputeNormals(&spheremodel);
+    SceneObject sphereobject =  BuildTrianglesAndAddToVirtualScene(&spheremodel);
+
     if ( argc > 1 )
     {
         ObjModel model(argv[1]);
@@ -380,6 +384,15 @@ int main(int argc, char* argv[])
 
     float playerspeed = 3.0f;
     float timeprev = 0.0f;
+
+    //animações
+    float altura_porta1 = 5.0f;
+    float giro_coelho = 1.57f;
+
+    bool fim = false;
+
+    bool inicializa_look_camera = true;
+
     // Ficamos em loop, renderizando, até que o usuário feche a janela
     while (!glfwWindowShouldClose(window))
     {
@@ -414,18 +427,6 @@ int main(int argc, char* argv[])
         float z = r*cos(g_CameraPhi)*cos(g_CameraTheta);
         float x = r*cos(g_CameraPhi)*sin(g_CameraTheta);
 
-        //Codigo para camera look-at do professor
-        //glm::vec4 camera_position_c  = glm::vec4(x,y,z,1.0f);
-        //glm::vec4 camera_lookat_l    = glm::vec4(0.0f,0.0f,0.0f,1.0f);
-        //glm::vec4 camera_view_vector = camera_lookat_l - camera_position_c;
-        //glm::vec4 camera_up_vector   = glm::vec4(0.0f,1.0f,0.0f,0.0f);
-
-        //Inicializa posição e camera do jogador uma única vez, talvez botar antes do while
-
-        camera_view_vector = glm::vec4(x,-y,z,0.0f); // Vetor "view", sentido para onde a câmera está virada
-        glm::vec4 u = crossproduct(glm::vec4(0.0f,1.0f,0.0f,0.0f), camera_view_vector);
-        glm::vec4 camera_up_vector = crossproduct(camera_view_vector, u); // Vetor "up" fixado para apontar para o "céu" (eito Y global)
-
         #define SPHERE   0
         #define BUNNY    1
         #define CAMERA   2
@@ -436,6 +437,7 @@ int main(int argc, char* argv[])
         #define BOOK     7
         #define CYLINDER 8
         #define FLY      9
+        #define PHONG    10
 
         glm::mat4 model_bunny = Matrix_Identity(), model_plane = Matrix_Identity(), model_camera = Matrix_Identity(); // Transformação identidade de modelagem
         //model = Matrix_Translate(1.0f,0.0f,-8.0f);
@@ -751,95 +753,182 @@ int main(int argc, char* argv[])
         glUniform1i(object_id_uniform, FLY);
         DrawVirtualObject("fly");
 
+
+        //Modelos de coelho e cubo para demonstração do PHONG shading na primeira sala
+        giro_coelho += 0.2f * deltatime;
+        if(giro_coelho >= 7.85f){ giro_coelho = 1.57f; }
+        glm::mat4 model_bunny = Matrix_Translate(-20.0f,0.5f,5.0f)
+                            * Matrix_Rotate_Y(giro_coelho)
+                            * Matrix_Scale(1.0f,1.0f,1.0f);
+        glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model_bunny));
+        glUniform1i(object_id_uniform, PHONG);
+        DrawVirtualObject("bunny");
+
+        model_cube = Matrix_Translate(-19.90f,-1.5f,5.0f)
+                   * Matrix_Scale(2.0f,2.0f,2.0f);
+        glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model_cube));
+        glUniform1i(object_id_uniform, PHONG);
+        DrawVirtualObject("cube");
+
+        //porta da primeira sala
+
+        if(altura_porta1 >= -10.0f){
+            altura_porta1 = altura_porta1 - 2.0f * deltatime;
+        }
+        model_parede = Matrix_Translate(0.0f,altura_porta1,25.0f)
+                         * Matrix_Rotate_X(1.57f)
+                         * Matrix_Scale(10.0f,0.5f,15.0f);
+        glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model_parede));
+        glUniform1i(object_id_uniform, PAREDEP);
+        DrawVirtualObject("parede");
+
+
     }
 
-        //movimentação da camera
-        if (playermovex != 0){
-            passos += playermovex*camera_view_vector*glm::vec4(1.0f,0.0f,1.0f,1.0f)*playerspeed*deltatime;
+        //movimentação da camera livre e colisão
+        if(!fim){
+            camera_view_vector = glm::vec4(x,-y,z,0.0f); // Vetor "view", sentido para onde a câmera está virada
+            glm::vec4 u = crossproduct(glm::vec4(0.0f,1.0f,0.0f,0.0f), camera_view_vector);
+            glm::vec4 camera_up_vector = crossproduct(camera_view_vector, u); // Vetor "up" fixado para apontar para o "céu" (eito Y global)
 
-            camera_position_c += playermovex*camera_view_vector*glm::vec4(1.0f,0.0f,1.0f,1.0f)*playerspeed*deltatime; //vec4 para não se mover para cima, zerando a componente Y
-            //model = Matrix_Translate(passos.x, passos.y, passos.z);
+            if (playermovex != 0){
+                passos += playermovex*camera_view_vector*glm::vec4(1.0f,0.0f,1.0f,1.0f)*playerspeed*deltatime;
 
-            // Desenhamos o modelo da esfera
-            model_camera = Matrix_Translate(1.0f,0.0f,-10.0f)
-                        * Matrix_Translate(passos.x, passos.y, passos.z);
-                         //* Matrix_Translate(x, -y, z);
+                camera_position_c += playermovex*camera_view_vector*glm::vec4(1.0f,0.0f,1.0f,1.0f)*playerspeed*deltatime; //vec4 para não se mover para cima, zerando a componente Y
+                //model = Matrix_Translate(passos.x, passos.y, passos.z);
 
-            glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model_camera));
-            glUniform1i(object_id_uniform, CAMERA);
+                // Desenhamos o modelo da esfera
+                model_camera = Matrix_Translate(1.0f,0.0f,-10.0f)
+                            * Matrix_Translate(passos.x, passos.y, passos.z);
+                             //* Matrix_Translate(x, -y, z);
 
-            if(colisao(g_VirtualScene["bunny"], g_VirtualScene["camera"], model_bunny, model_camera))
-            {
-                passos -= playermovex*camera_view_vector*glm::vec4(1.0f,0.0f,1.0f,1.0f)*playerspeed*deltatime;
-                camera_position_c -= playermovex*camera_view_vector*glm::vec4(1.0f,0.0f,1.0f,1.0f)*playerspeed*deltatime;
+                glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model_camera));
+                glUniform1i(object_id_uniform, CAMERA);
+
+                if(colisao(g_VirtualScene["bunny"], g_VirtualScene["camera"], model_bunny, model_camera))
+                {
+                    passos -= playermovex*camera_view_vector*glm::vec4(1.0f,0.0f,1.0f,1.0f)*playerspeed*deltatime;
+                    camera_position_c -= playermovex*camera_view_vector*glm::vec4(1.0f,0.0f,1.0f,1.0f)*playerspeed*deltatime;
+                }
+
+            }
+            if (playermovey != 0){
+                passos += playermovey*u*glm::vec4(1.0f,0.0f,1.0f,1.0f)*playerspeed*deltatime;
+
+                camera_position_c += playermovey*u*glm::vec4(1.0f,0.0f,1.0f,1.0f)*playerspeed*deltatime; //vec4 para não se mover para cima, zerando a componente Y
+
+                // Desenhamos o modelo da esfera
+                model_camera =  Matrix_Translate(1.0f,0.0f,-10.0f)
+                            * Matrix_Translate(passos.x, passos.y, passos.z);
+                            //* Matrix_Translate(x, -y, z);
+
+                glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model_camera));
+                glUniform1i(object_id_uniform, CAMERA);
+
+                if(colisao(g_VirtualScene["bunny"], g_VirtualScene["camera"], model_bunny, model_camera))
+                {
+                    passos -= playermovey*u*glm::vec4(1.0f,0.0f,1.0f,1.0f)*playerspeed*deltatime;
+                    camera_position_c -= playermovey*u*glm::vec4(1.0f,0.0f,1.0f,1.0f)*playerspeed*deltatime;
+                }
             }
 
-        }
-        if (playermovey != 0){
-            passos += playermovey*u*glm::vec4(1.0f,0.0f,1.0f,1.0f)*playerspeed*deltatime;
-
-            camera_position_c += playermovey*u*glm::vec4(1.0f,0.0f,1.0f,1.0f)*playerspeed*deltatime; //vec4 para não se mover para cima, zerando a componente Y
-
-            // Desenhamos o modelo da esfera
-            model_camera =  Matrix_Translate(1.0f,0.0f,-10.0f)
-                        * Matrix_Translate(passos.x, passos.y, passos.z);
-                        //* Matrix_Translate(x, -y, z);
-
-            glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model_camera));
-            glUniform1i(object_id_uniform, CAMERA);
-
-            if(colisao(g_VirtualScene["bunny"], g_VirtualScene["camera"], model_bunny, model_camera))
+            //Gravidade aplicada no jogador (por enquanto não passa do chão sem testar colisão
+            if (camera_position_c.y >= 1.0f)
             {
-                passos -= playermovey*u*glm::vec4(1.0f,0.0f,1.0f,1.0f)*playerspeed*deltatime;
-                camera_position_c -= playermovey*u*glm::vec4(1.0f,0.0f,1.0f,1.0f)*playerspeed*deltatime;
+                camera_position_c += glm::vec4(0.0f,-15.0f,0.0f,0.0f)*deltatime;
+            }
+            glm::mat4 view = Matrix_Camera_View(camera_position_c, camera_view_vector, camera_up_vector);
+
+            // Agora computamos a matriz de Projeção.
+            glm::mat4 projection;
+
+            float nearplane = -0.1f;  // Posição do "near plane"
+            float farplane  = -1000.0f; // Posição do "far plane" <------------------ VIEW DISTANCE
+
+            if (g_UsePerspectiveProjection)
+            {
+                // Projeção Perspectiva.
+                // Para definição do field of view (FOV), veja slides 205-215 do documento Aula_09_Projecoes.pdf.
+                float field_of_view = 3.141592 / 3.0f;
+                projection = Matrix_Perspective(field_of_view, g_ScreenRatio, nearplane, farplane);
+            }
+            else
+            {
+                // Projeção Ortográfica.
+                // Para definição dos valores l, r, b, t ("left", "right", "bottom", "top"),
+                // PARA PROJEÇÃO ORTOGRÁFICA veja slides 219-224 do documento Aula_09_Projecoes.pdf.
+                // Para simular um "zoom" ortográfico, computamos o valor de "t"
+                // utilizando a variável g_CameraDistance.
+                float t = 1.5f*g_CameraDistance/2.5f;
+                float b = -t;
+                float r = t*g_ScreenRatio;
+                float l = -r;
+                projection = Matrix_Orthographic(l, r, b, t, nearplane, farplane);
+            }
+            glUniformMatrix4fv(view_uniform       , 1 , GL_FALSE , glm::value_ptr(view));
+            glUniformMatrix4fv(projection_uniform , 1 , GL_FALSE , glm::value_ptr(projection));
+
+            //checa se o jogador está proximo o suficiente do livro para ativar a camera look-at
+            if(camera_position_c.z >= 90.0f){
+                fim = true;
             }
         }
+        //ativa camera look_at ao redor do livro
+        else{
+           if(inicializa_look_camera){
+            g_CameraDistance = 10.0f;
+            inicializa_look_camera = false;
+           }
 
-        //Gravidade aplicada no jogador (por enquanto não passa do chão sem testar colisão
-        if (camera_position_c.y >= 1.0f)
-        {
-            camera_position_c += glm::vec4(0.0f,-15.0f,0.0f,0.0f)*deltatime;
+            camera_position_c  = glm::vec4(-50.0f+x,1.0f+y,100.0f+z,1.0f);
+            glm::vec4 camera_lookat_l    = glm::vec4(-50.0f,0.5f,100.0f,1.0f);
+            glm::vec4 camera_view_vector = camera_lookat_l - camera_position_c;
+            glm::vec4 camera_up_vector   = glm::vec4(0.0f,1.0f,0.0f,0.0f);
+
+            glm::mat4 view = Matrix_Camera_View(camera_position_c, camera_view_vector, camera_up_vector);
+
+            // Agora computamos a matriz de Projeção.
+            glm::mat4 projection;
+
+            float nearplane = -0.1f;  // Posição do "near plane"
+            float farplane  = -1000.0f; // Posição do "far plane" <------------------ VIEW DISTANCE
+
+            if (g_UsePerspectiveProjection)
+            {
+                // Projeção Perspectiva.
+                // Para definição do field of view (FOV), veja slides 205-215 do documento Aula_09_Projecoes.pdf.
+                float field_of_view = 3.141592 / 3.0f;
+                projection = Matrix_Perspective(field_of_view, g_ScreenRatio, nearplane, farplane);
+            }
+            else
+            {
+                // Projeção Ortográfica.
+                // Para definição dos valores l, r, b, t ("left", "right", "bottom", "top"),
+                // PARA PROJEÇÃO ORTOGRÁFICA veja slides 219-224 do documento Aula_09_Projecoes.pdf.
+                // Para simular um "zoom" ortográfico, computamos o valor de "t"
+                // utilizando a variável g_CameraDistance.
+                float t = 1.5f*g_CameraDistance/2.5f;
+                float b = -t;
+                float r = t*g_ScreenRatio;
+                float l = -r;
+                projection = Matrix_Orthographic(l, r, b, t, nearplane, farplane);
+            }
+            glUniformMatrix4fv(view_uniform       , 1 , GL_FALSE , glm::value_ptr(view));
+            glUniformMatrix4fv(projection_uniform , 1 , GL_FALSE , glm::value_ptr(projection));
         }
-
 
         // Computamos a matriz "View" utilizando os parâmetros da câmera para
         // definir o sistema de coordenadas da câmera.  Veja slides 2-14, 184-190 e 236-242 do documento Aula_08_Sistemas_de_Coordenadas.pdf.
-        glm::mat4 view = Matrix_Camera_View(camera_position_c, camera_view_vector, camera_up_vector);
 
-        // Agora computamos a matriz de Projeção.
-        glm::mat4 projection;
 
         // Note que, no sistema de coordenadas da câmera, os planos near e far
         // estão no sentido negativo! Veja slides 176-204 do documento Aula_09_Projecoes.pdf.
-        float nearplane = -0.1f;  // Posição do "near plane"
-        float farplane  = -1000.0f; // Posição do "far plane" <------------------ VIEW DISTANCE
 
-        if (g_UsePerspectiveProjection)
-        {
-            // Projeção Perspectiva.
-            // Para definição do field of view (FOV), veja slides 205-215 do documento Aula_09_Projecoes.pdf.
-            float field_of_view = 3.141592 / 3.0f;
-            projection = Matrix_Perspective(field_of_view, g_ScreenRatio, nearplane, farplane);
-        }
-        else
-        {
-            // Projeção Ortográfica.
-            // Para definição dos valores l, r, b, t ("left", "right", "bottom", "top"),
-            // PARA PROJEÇÃO ORTOGRÁFICA veja slides 219-224 do documento Aula_09_Projecoes.pdf.
-            // Para simular um "zoom" ortográfico, computamos o valor de "t"
-            // utilizando a variável g_CameraDistance.
-            float t = 1.5f*g_CameraDistance/2.5f;
-            float b = -t;
-            float r = t*g_ScreenRatio;
-            float l = -r;
-            projection = Matrix_Orthographic(l, r, b, t, nearplane, farplane);
-        }
 
         // Enviamos as matrizes "view" e "projection" para a placa de vídeo
         // (GPU). Veja o arquivo "shader_vertex.glsl", onde estas são
         // efetivamente aplicadas em todos os pontos.
-        glUniformMatrix4fv(view_uniform       , 1 , GL_FALSE , glm::value_ptr(view));
-        glUniformMatrix4fv(projection_uniform , 1 , GL_FALSE , glm::value_ptr(projection));
+
 
 
         // Pegamos um vértice com coordenadas de modelo (0.5, 0.5, 0.5, 1) e o

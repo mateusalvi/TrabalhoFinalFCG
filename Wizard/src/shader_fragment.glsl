@@ -29,6 +29,7 @@ uniform mat4 projection;
 #define BOOK     7
 #define CYLINDER 8
 #define FLY      9
+#define PHONG    10
 
 
 uniform int object_id;
@@ -71,7 +72,8 @@ void main()
     vec4 n = normalize(normal);
 
     // Vetor que define o sentido da fonte de luz em relação ao ponto atual.
-    vec4 l = normalize(vec4(1.0,1.0,0.0,0.0));
+    vec4 l = normalize(vec4(1.0,1.0,1.0,0.0));
+    vec3 I = vec3(1.0,1.0,1.0);
 
     // Vetor que define o sentido da câmera em relação ao ponto atual.
     vec4 v = normalize(camera_position - p);
@@ -80,6 +82,11 @@ void main()
     float U = 0.0;
     float V = 0.0, raio = 2.0f, theta, phi;
     vec4 pesfera;
+
+    //variáveis para Phong Shading
+    int q = 10; //intensidade do reflexo
+    vec4 r = -l + (2*n*dot(n,l));
+    float angulo_incidencia = dot(r,v);
 
     if ( object_id == SPHERE )
     {
@@ -170,8 +177,14 @@ void main()
     else if ( object_id == FLY)
     {
         // Coordenadas de textura do plano, obtidas do arquivo OBJ.
-        U = texcoords.x*10;
-        V = texcoords.y*10;
+        U = texcoords.x*40;
+        V = texcoords.y*40;
+    }
+    else if ( object_id == PHONG)
+    {
+        // Coordenadas de textura do plano, obtidas do arquivo OBJ.
+        U = texcoords.x*2;
+        V = texcoords.y*2;
     }
 
     //ILUMINAÇÃO E TEXTURAS
@@ -182,11 +195,15 @@ void main()
     // Equação de Iluminação
     float lambert = max(0,dot(n,l));
 
-    color = Kd0 * (lambert + 0.01);
+    color = Kd0 * I * (lambert + 0.01);
+
+    //termo de phong para adicionar reflexo nos objetos desejados
+    vec3 luz = vec3(1.0,1.0,1.0);
+    vec3 phong = (lambert + 0.1) + I * luz * pow(max(0, angulo_incidencia),q);
 
     if(object_id == CHAO)
     {
-        color = texture(TextureImage0, vec2(U,V)).rgb * (lambert + 0.1);
+        color = texture(TextureImage0, vec2(U,V)).rgb * phong;
     }
     else if(object_id == PAREDE)
     {
@@ -210,7 +227,13 @@ void main()
     }
     else if(object_id == FLY)
     {
-        color = texture(TextureImage3, vec2(U,V)).rgb * (lambert + 0.1);
+        vec3 phong = (lambert + 0.1) + I * vec3(10.0,10.0,10.0) * pow(max(0, angulo_incidencia),10);
+        color = texture(TextureImage4, vec2(U,V)).rgb * phong;
+    }
+    else if(object_id == PHONG)
+    {
+        vec3 phong = (lambert + 0.1) + I * vec3(10.0,10.0,10.0) * pow(max(0, angulo_incidencia),10); //reflexo exagerado para a esfera de demonstração
+        color = texture(TextureImage0, vec2(U,V)).rgb * phong;
     }
 
     // Cor final com correção gamma, considerando monitor sRGB.
