@@ -48,6 +48,8 @@
 #include "utils.h"
 #include "matrices.h"
 
+#include <windows.h>
+
 // Constantes
 #define HEIGHT 800
 #define WIDTH 600
@@ -236,7 +238,6 @@ bool colisao(SceneObject a, SceneObject b, glm::mat4 modelA, glm::mat4 modelB)
 }
 
 
-
 int main(int argc, char* argv[])
 {
     // Inicializamos a biblioteca GLFW, utilizada para criar uma janela do
@@ -313,8 +314,12 @@ int main(int argc, char* argv[])
     LoadShadersFromFiles();
 
     // Carregamos duas imagens para serem utilizadas como textura
-    LoadTextureImage("../../data/chao.png");      // TextureImage0
-    LoadTextureImage("../../data/parede.jpg");      // TextureImage1
+    LoadTextureImage("../../data/chao.png");         // TextureImage0
+    LoadTextureImage("../../data/parede.jpg");       // TextureImage1
+    LoadTextureImage("../../data/livro.jpg");        // TextureImage2
+    LoadTextureImage("../../data/galaxia.jpg");      // TextureImage3
+    LoadTextureImage("../../data/fly.png");          // TextureImage4
+    LoadTextureImage("../../data/fly2.jpg");         // TextureImage5
 
     // Construímos a representação de objetos geométricos através de malhas de triângulos
     ObjModel cameramodel("../../data/camera.obj");
@@ -324,10 +329,6 @@ int main(int argc, char* argv[])
     ObjModel bunnymodel("../../data/bunny.obj");
     ComputeNormals(&bunnymodel);
     SceneObject bunnyobject =  BuildTrianglesAndAddToVirtualScene(&bunnymodel);
-
-    ObjModel planemodel("../../data/plane.obj");
-    ComputeNormals(&planemodel);
-    SceneObject planeobject =  BuildTrianglesAndAddToVirtualScene(&planemodel);
 
     ObjModel cubemodel("../../data/cube.obj");
     ComputeNormals(&cubemodel);
@@ -340,6 +341,14 @@ int main(int argc, char* argv[])
     ObjModel bookmodel("../../data/book.obj");
     ComputeNormals(&bookmodel);
     SceneObject bookobject =  BuildTrianglesAndAddToVirtualScene(&bookmodel);
+
+    ObjModel cylindermodel("../../data/cylinder.obj");
+    ComputeNormals(&cylindermodel);
+    SceneObject cylinderobject =  BuildTrianglesAndAddToVirtualScene(&cylindermodel);
+
+    ObjModel flymodel("../../data/fly.obj");
+    ComputeNormals(&flymodel);
+    SceneObject flyobject =  BuildTrianglesAndAddToVirtualScene(&flymodel);
 
     if ( argc > 1 )
     {
@@ -365,9 +374,9 @@ int main(int argc, char* argv[])
     glm::mat4 the_view;
 
     //Inicializa posição e camera do jogador
-    glm::vec4 camera_position_c  = glm::vec4(0.0f,10.0f,-10.0f,1.0f); // Ponto "c", centro da câmera
+    glm::vec4 camera_position_c  = glm::vec4(0.0f,15.0f,-20.0f,1.0f); // Ponto "c", centro da câmera
     glm::vec4 camera_view_vector = glm::vec4(1.0f,1.0f,0.0f,0.0f);
-    glm::vec4 passos = glm::vec4(0.0f,0.0f,0.0f,0.0f);
+    glm::vec4 passos = glm::vec4(0.0f,0.0f,-10.0f,0.0f);
 
     float playerspeed = 3.0f;
     float timeprev = 0.0f;
@@ -417,14 +426,16 @@ int main(int argc, char* argv[])
         glm::vec4 u = crossproduct(glm::vec4(0.0f,1.0f,0.0f,0.0f), camera_view_vector);
         glm::vec4 camera_up_vector = crossproduct(camera_view_vector, u); // Vetor "up" fixado para apontar para o "céu" (eito Y global)
 
-        #define SPHERE 0
-        #define BUNNY  1
-        #define CAMERA 2
-        #define CUBE   3
-        #define PAREDE 4
-        #define PAREDEM 5
-        #define PAREDEP 6
-        #define BOOK   7
+        #define SPHERE   0
+        #define BUNNY    1
+        #define CAMERA   2
+        #define CUBE     3
+        #define PAREDE   4
+        #define PAREDEM  5
+        #define PAREDEP  6
+        #define BOOK     7
+        #define CYLINDER 8
+        #define FLY      9
 
         glm::mat4 model_bunny = Matrix_Identity(), model_plane = Matrix_Identity(), model_camera = Matrix_Identity(); // Transformação identidade de modelagem
         //model = Matrix_Translate(1.0f,0.0f,-8.0f);
@@ -566,7 +577,7 @@ int main(int argc, char* argv[])
         glUniform1i(object_id_uniform, PAREDE);
         DrawVirtualObject("parede");
 
-        model_parede = Matrix_Translate(-49.85f,10.0f,24.85f)
+        model_parede = Matrix_Translate(-50.0f,10.0f,25.0f)
                      * Matrix_Rotate_X(1.57f)
                      * Matrix_Scale(50.0f,0.5f,25.0f);
         glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model_parede));
@@ -644,6 +655,102 @@ int main(int argc, char* argv[])
         glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model_book));
         glUniform1i(object_id_uniform, BOOK);
         DrawVirtualObject("book");
+
+        //pilares
+        //primeira sala
+        glm::mat4 model_cylinder = Matrix_Translate(-10.0f,25.0f,25.0f)
+                                * Matrix_Rotate_X(1.57f)
+                                * Matrix_Scale(1.0f,1.0f,10.0f);
+        glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model_cylinder));
+        glUniform1i(object_id_uniform, CYLINDER);
+        DrawVirtualObject("cylinder");
+
+        model_cylinder = Matrix_Translate(10.0f,25.0f,25.0f)
+                                * Matrix_Rotate_X(1.57f)
+                                * Matrix_Scale(1.0f,1.0f,10.0f);
+        glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model_cylinder));
+        glUniform1i(object_id_uniform, CYLINDER);
+        DrawVirtualObject("cylinder");
+
+        model_cylinder = Matrix_Translate(-10.0f,25.0f,-25.0f)
+                                * Matrix_Rotate_X(1.57f)
+                                * Matrix_Scale(1.0f,1.0f,10.0f);
+        glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model_cylinder));
+        glUniform1i(object_id_uniform, CYLINDER);
+        DrawVirtualObject("cylinder");
+
+        model_cylinder = Matrix_Translate(10.0f,25.0f,-25.0f)
+                                * Matrix_Rotate_X(1.57f)
+                                * Matrix_Scale(1.0f,1.0f,10.0f);
+        glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model_cylinder));
+        glUniform1i(object_id_uniform, CYLINDER);
+        DrawVirtualObject("cylinder");
+
+        //sala do meio
+        model_cylinder = Matrix_Translate(0.0f,25.0f,50.0f)
+                                * Matrix_Rotate_X(1.57f)
+                                * Matrix_Scale(1.0f,1.0f,10.0f);
+        glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model_cylinder));
+        glUniform1i(object_id_uniform, CYLINDER);
+        DrawVirtualObject("cylinder");
+
+        model_cylinder = Matrix_Translate(-50.0f,25.0f,50.0f)
+                                * Matrix_Rotate_X(1.57f)
+                                * Matrix_Scale(1.0f,1.0f,10.0f);
+        glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model_cylinder));
+        glUniform1i(object_id_uniform, CYLINDER);
+        DrawVirtualObject("cylinder");
+
+        //sala do livro
+        model_cylinder = Matrix_Translate(-60.0f,25.0f,75.0f)
+                                * Matrix_Rotate_X(1.57f)
+                                * Matrix_Scale(1.0f,1.0f,10.0f);
+        glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model_cylinder));
+        glUniform1i(object_id_uniform, CYLINDER);
+        DrawVirtualObject("cylinder");
+
+        model_cylinder = Matrix_Translate(-40.0f,25.0f,75.0f)
+                                * Matrix_Rotate_X(1.57f)
+                                * Matrix_Scale(1.0f,1.0f,10.0f);
+        glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model_cylinder));
+        glUniform1i(object_id_uniform, CYLINDER);
+        DrawVirtualObject("cylinder");
+
+        model_cylinder = Matrix_Translate(-60.0f,25.0f,125.0f)
+                                * Matrix_Rotate_X(1.57f)
+                                * Matrix_Scale(1.0f,1.0f,10.0f);
+        glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model_cylinder));
+        glUniform1i(object_id_uniform, CYLINDER);
+        DrawVirtualObject("cylinder");
+
+        model_cylinder = Matrix_Translate(-40.0f,25.0f,125.0f)
+                                * Matrix_Rotate_X(1.57f)
+                                * Matrix_Scale(1.0f,1.0f,10.0f);
+        glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model_cylinder));
+        glUniform1i(object_id_uniform, CYLINDER);
+        DrawVirtualObject("cylinder");
+
+        model_cylinder = Matrix_Translate(-65.0f,25.0f,100.0f)
+                                * Matrix_Rotate_X(1.57f)
+                                * Matrix_Scale(1.0f,1.0f,10.0f);
+        glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model_cylinder));
+        glUniform1i(object_id_uniform, CYLINDER);
+        DrawVirtualObject("cylinder");
+
+        model_cylinder = Matrix_Translate(-35.0f,25.0f,100.0f)
+                                * Matrix_Rotate_X(1.57f)
+                                * Matrix_Scale(1.0f,1.0f,10.0f);
+        glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model_cylinder));
+        glUniform1i(object_id_uniform, CYLINDER);
+        DrawVirtualObject("cylinder");
+
+        glm::mat4 model_fly = Matrix_Translate(5.0f,2.0f,2.0f)
+                            * Matrix_Rotate_X(-1.57f)
+                            * Matrix_Scale(0.3f,0.3f,0.3f);
+        glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model_fly));
+        glUniform1i(object_id_uniform, FLY);
+        DrawVirtualObject("fly");
+
     }
 
         //movimentação da camera
@@ -686,7 +793,6 @@ int main(int argc, char* argv[])
                 passos -= playermovey*u*glm::vec4(1.0f,0.0f,1.0f,1.0f)*playerspeed*deltatime;
                 camera_position_c -= playermovey*u*glm::vec4(1.0f,0.0f,1.0f,1.0f)*playerspeed*deltatime;
             }
-
         }
 
         //Gravidade aplicada no jogador (por enquanto não passa do chão sem testar colisão
@@ -909,6 +1015,7 @@ void LoadShadersFromFiles()
     glUniform1i(glGetUniformLocation(program_id, "TextureImage0"), 0);
     glUniform1i(glGetUniformLocation(program_id, "TextureImage1"), 1);
     glUniform1i(glGetUniformLocation(program_id, "TextureImage2"), 2);
+    glUniform1i(glGetUniformLocation(program_id, "TextureImage3"), 3);
     glUseProgram(0);
 }
 

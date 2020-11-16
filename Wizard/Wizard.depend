@@ -966,7 +966,7 @@
 	<inttypes.h>
 	<stdint.h>
 
-1605393985 source:d:\facul\computação gráfica\trabalho final\trabalhofinalfcg\wizard\src\main.cpp
+1605502364 source:d:\facul\computação gráfica\trabalho final\trabalhofinalfcg\wizard\src\main.cpp
 	<cmath>
 	<cstdio>
 	<cstdlib>
@@ -988,6 +988,7 @@
 	<stb_image.h>
 	"utils.h"
 	"matrices.h"
+	<windows.h>
 
 1605125023 d:\facul\computação gráfica\trabalho final\trabalhofinalfcg\wizard\include\glfw\glfw3.h
 	<stddef.h>
@@ -1867,7 +1868,7 @@
 1605125024 source:d:\facul\computação gráfica\trabalho final\trabalhofinalfcg\wizard\src\stb_image.cpp
 	"stb_image.h"
 
-1605125024 source:d:\facul\computação gráfica\trabalho final\trabalhofinalfcg\wizard\src\textrendering.cpp
+1605481807 source:d:\facul\computação gráfica\trabalho final\trabalhofinalfcg\wizard\src\textrendering.cpp
 	<string>
 	<glad/glad.h>
 	<GLFW/glfw3.h>

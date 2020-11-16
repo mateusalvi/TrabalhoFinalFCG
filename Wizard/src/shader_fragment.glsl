@@ -19,14 +19,17 @@ uniform mat4 view;
 uniform mat4 projection;
 
 // Identificador que define qual objeto está sendo desenhado no momento
-#define SPHERE  0
-#define BUNNY   1
-#define CAMERA  2
-#define CHAO    3
-#define PAREDE  4
+#define SPHERE   0
+#define BUNNY    1
+#define CAMERA   2
+#define CHAO     3
+#define PAREDE   4
 #define PAREDEM  5
 #define PAREDEP  6
-#define BOOK    7
+#define BOOK     7
+#define CYLINDER 8
+#define FLY      9
+
 
 uniform int object_id;
 
@@ -35,10 +38,12 @@ uniform vec4 bbox_min;
 uniform vec4 bbox_max;
 
 // Variáveis para acesso das imagens de textura
-uniform sampler2D TextureImage0;
-uniform sampler2D TextureImage1;
-uniform sampler2D TextureImage2;
-
+uniform sampler2D TextureImage0;//chão
+uniform sampler2D TextureImage1;//parede
+uniform sampler2D TextureImage2;//livro
+uniform sampler2D TextureImage3;//galaxia
+uniform sampler2D TextureImage4;//mosca
+uniform sampler2D TextureImage5;
 
 // O valor de saída ("out") de um Fragment Shader é a cor final do fragmento.
 out vec3 color;
@@ -73,7 +78,7 @@ void main()
     vec4 pvetor;
     // Coordenadas de textura U e V
     float U = 0.0;
-    float V = 0.0, raio = 1.0f, theta, phi;
+    float V = 0.0, raio = 2.0f, theta, phi;
     vec4 pesfera;
 
     if ( object_id == SPHERE )
@@ -94,10 +99,10 @@ void main()
         vec4 bbox_center = (bbox_min + bbox_max) / 2.0;
 
         pesfera = bbox_center + (raio * (position_model - bbox_center) / length(position_model - bbox_center));
-        pvetor = pesfera - bbox_center;
+        pvetor  = pesfera - bbox_center;
 
         theta = atan(pvetor.x, pvetor.z);
-        phi = asin(pvetor.y / raio);
+        phi   = asin(pvetor.y / raio);
 
         U = (theta + M_PI) / (2 * M_PI);
         V = (phi + (M_PI/2)) / M_PI;
@@ -150,26 +155,62 @@ void main()
         U = texcoords.x*2.34;
         V = texcoords.y*4;
     }
+    else if ( object_id == CYLINDER)
+    {
+        // Coordenadas de textura do plano, obtidas do arquivo OBJ.
+        U = texcoords.x*3;
+        V = texcoords.y*7;
+    }
+    else if ( object_id == BOOK)
+    {
+        // Coordenadas de textura do plano, obtidas do arquivo OBJ.
+        U = texcoords.x;
+        V = texcoords.y;
+    }
+    else if ( object_id == FLY)
+    {
+        // Coordenadas de textura do plano, obtidas do arquivo OBJ.
+        U = texcoords.x*10;
+        V = texcoords.y*10;
+    }
+
+    //ILUMINAÇÃO E TEXTURAS
 
     // Obtemos a refletância difusa a partir da leitura da imagem TextureImage0
-    vec3 Kd0 = texture(TextureImage0, vec2(U,V)).rgb;
+    vec3 Kd0 = texture(TextureImage3, vec2(U,V)).rgb;
 
     // Equação de Iluminação
     float lambert = max(0,dot(n,l));
 
     color = Kd0 * (lambert + 0.01);
 
-    if(object_id == PAREDE)
+    if(object_id == CHAO)
     {
-        color = texture(TextureImage1, vec2(U,V)).rgb;
+        color = texture(TextureImage0, vec2(U,V)).rgb * (lambert + 0.1);
     }
-    if(object_id == PAREDEM)
+    else if(object_id == PAREDE)
     {
-        color = texture(TextureImage1, vec2(U,V)).rgb;
+        color = texture(TextureImage1, vec2(U,V)).rgb * (lambert + 0.1);
     }
-    if(object_id == PAREDEP)
+    else if(object_id == PAREDEM)
     {
-        color = texture(TextureImage1, vec2(U,V)).rgb;
+        color = texture(TextureImage1, vec2(U,V)).rgb * (lambert + 0.1);
+    }
+    else if(object_id == PAREDEP)
+    {
+        color = texture(TextureImage1, vec2(U,V)).rgb * (lambert + 0.1);
+    }
+    else if(object_id == CYLINDER)
+    {
+        color = texture(TextureImage1, vec2(U,V)).rgb * (lambert + 0.1);
+    }
+    else if(object_id == BOOK)
+    {
+        color = texture(TextureImage2, vec2(U,V)).rgb * (lambert + 0.1);
+    }
+    else if(object_id == FLY)
+    {
+        color = texture(TextureImage3, vec2(U,V)).rgb * (lambert + 0.1);
     }
 
     // Cor final com correção gamma, considerando monitor sRGB.
