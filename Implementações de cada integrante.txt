@@ -1,6 +1,11 @@
 Mateus Salvi:
--Freecamera que não pode voar
+-Freecamera que não pode voar, estilo jogo em primeira pessoa, com efeito da gravidade.
 -Mouse restrito à janela, invisível e sem necessidade de manter o botão esquerdo apertado.
+-Modelo de iluminação Phong
+-Camera look-at ao chegar no objetivo do jogo
+-Animações em função do tempo
+-Projeção de texturas
+-Modelagem do cenário
 
 Rafael O. Nunes:
 - Colisão cubo-cubo
