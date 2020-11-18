@@ -237,6 +237,20 @@ bool colisao(SceneObject a, SceneObject b, glm::mat4 modelA, glm::mat4 modelB)
 
 }
 
+float tempo_antigo = 0.0f;
+float varia_tamanho_texto = 0.0f;
+void TextRendering_Missao(GLFWwindow* window)
+{
+    float tempo_agora = (float)glfwGetTime();
+    float varia_tempo = tempo_agora - tempo_antigo;
+    tempo_antigo = (float)glfwGetTime();
+
+    if ( varia_tamanho_texto <= 4.5f  )
+    {
+        varia_tamanho_texto = varia_tamanho_texto+0.8*varia_tempo;
+        TextRendering_PrintString(window, "Encontre o livro para fugir", -1.3f+varia_tamanho_texto/3.5, 0.7f, 4.5f-varia_tamanho_texto);
+    }
+}
 
 int main(int argc, char* argv[])
 {
@@ -318,8 +332,7 @@ int main(int argc, char* argv[])
     LoadTextureImage("../../data/parede.jpg");       // TextureImage1
     LoadTextureImage("../../data/livro.jpg");        // TextureImage2
     LoadTextureImage("../../data/galaxia.jpg");      // TextureImage3
-    LoadTextureImage("../../data/fly.png");          // TextureImage4
-    LoadTextureImage("../../data/fly2.jpg");         // TextureImage5
+    LoadTextureImage("../../data/goo.png");          // TextureImage4
 
     // Construímos a representação de objetos geométricos através de malhas de triângulos
     ObjModel cameramodel("../../data/camera.obj");
@@ -940,6 +953,7 @@ int main(int argc, char* argv[])
 
         // Imprimimos na tela os ângulos de Euler que controlam a rotação do
         // terceiro cubo.
+        TextRendering_Missao(window);
         TextRendering_ShowEulerAngles(window);
 
         // Imprimimos na informação sobre a matriz de projeção sendo utilizada.
