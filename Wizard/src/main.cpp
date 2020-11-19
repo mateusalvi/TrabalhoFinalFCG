@@ -83,6 +83,7 @@ struct ObjModel
 
 // Definimos uma estrutura que armazenará dados necessários para renderizar
 // cada objeto da cena virtual.
+#define MAX_OBJ_MESMA_CLASSE 17
 struct SceneObject
 {
     std::string  name;        // Nome do objeto
@@ -92,6 +93,9 @@ struct SceneObject
     GLuint       vertex_array_object_id; // ID do VAO onde estão armazenados os atributos do modelo
     glm::vec3    bbox_min; // Axis-Aligned Bounding Box do objeto
     glm::vec3    bbox_max;
+    int          ultimo_obj= 0;
+    glm::mat4    model[MAX_OBJ_MESMA_CLASSE];
+    //glm::mat4    model;
 };
 
 // Declaração de funções utilizadas para pilha de matrizes de modelagem.
@@ -229,8 +233,15 @@ void UpdateBezierMovement(){
     bezier_iterator  += bezier_step;
 }
 
-bool colisao(SceneObject a, SceneObject b, glm::mat4 modelA, glm::mat4 modelB)
+bool _colisao(std::string obj1, std::string obj2, int indice)
 {
+    SceneObject a = g_VirtualScene[obj1];
+    SceneObject b = g_VirtualScene[obj2];
+
+
+    glm::mat4 modelA = a.model[indice];
+    glm::mat4 modelB = b.model[indice];
+
     glm::vec4 a_new_max = glm::vec4(a.bbox_max.x, a.bbox_max.y, a.bbox_max.z, 0.0f) * modelA ;
     glm::vec4 a_new_min = glm::vec4(a.bbox_min.x, a.bbox_min.y, a.bbox_min.z, 0.0f) * modelA;
     glm::vec4 b_new_max = glm::vec4(b.bbox_max.x, b.bbox_max.y, b.bbox_max.z, 0.0f) * modelB;
@@ -260,6 +271,30 @@ bool colisao(SceneObject a, SceneObject b, glm::mat4 modelA, glm::mat4 modelB)
             a_new_max.z > b_new_min.z &&
             a_new_min.z < b_new_max.z);
 
+}
+
+bool colisao()
+{
+    int max_obj;
+    bool colidiu = false;
+    int i = 0, j=0;
+    int quantidade_obj = 2;
+    //std::string lista_objetos[4] = {"bunny", "cube", "parede", "cylinder"};
+    std::string lista_objetos[quantidade_obj] = {"bunny", "fly"};
+
+    for(i=0; i<quantidade_obj;i++)
+    {
+        max_obj = g_VirtualScene[lista_objetos[i]].ultimo_obj;
+        for(j=0;j<=max_obj;j++)
+        {
+            colidiu = colidiu || _colisao(lista_objetos[i], "camera", j);
+
+            if(colidiu)
+                return true;
+        }
+    }
+
+    return false;
 }
 
 //TEXTO ANIMADO DE OBJETIVO NO INICIO DO JOGO
@@ -417,7 +452,7 @@ int main(int argc, char* argv[])
     glm::mat4 the_view;
 
     //Inicializa posição e camera do jogador
-    glm::vec4 camera_position_c  = glm::vec4(0.0f,15.0f,-20.0f,1.0f); // Ponto "c", centro da câmera
+    glm::vec4 camera_position_c  = glm::vec4(0.0f,40.0f,-20.0f,1.0f); // Ponto "c", centro da câmera
     glm::vec4 camera_view_vector = glm::vec4(1.0f,1.0f,0.0f,0.0f);
     glm::vec4 passos = glm::vec4(0.0f,0.0f,-10.0f,0.0f);
 
@@ -478,21 +513,21 @@ int main(int argc, char* argv[])
         #define FLY      9
         #define PHONG    10
 
-        glm::mat4 model_bunny = Matrix_Identity(), model_plane = Matrix_Identity(), model_camera = Matrix_Identity(); // Transformação identidade de modelagem
+        glm::mat4  model_plane = Matrix_Identity(); // Transformação identidade de modelagem
         //model = Matrix_Translate(1.0f,0.0f,-8.0f);
 
         // Desenhamos o modelo do coelho
-        model_bunny = Matrix_Translate(1.0f,0.0f,0.0f);
-        glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model_bunny));
+        g_VirtualScene["bunny"].model[g_VirtualScene["bunny"].ultimo_obj] = Matrix_Translate(1.0f,0.0f,0.0f);
+        glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(g_VirtualScene["bunny"].model[g_VirtualScene["bunny"].ultimo_obj]));
         glUniform1i(object_id_uniform, BUNNY);
         DrawVirtualObject("bunny");
 
         // Desenhamos o modelo da esfera
-        model_camera = Matrix_Translate(1.0f,0.0f,-10.0f)
+        g_VirtualScene["camera"].model[0] = Matrix_Translate(1.0f,0.0f,-10.0f)
                      * Matrix_Translate(passos.x, passos.y, passos.z);
                      //* Matrix_Translate(x, -y, z);
 
-        glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model_camera));
+        glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(g_VirtualScene["camera"].model[0]));
         glUniform1i(object_id_uniform, CAMERA);
 
         //----------------------------DESENHOS DO MAPA----------------------------
@@ -785,23 +820,23 @@ int main(int argc, char* argv[])
         glUniform1i(object_id_uniform, CYLINDER);
         DrawVirtualObject("cylinder");
 
-        glm::mat4 model_fly = Matrix_Translate(5.0f,2.0f,2.0f)
+        g_VirtualScene["fly"].model[g_VirtualScene["fly"].ultimo_obj] = Matrix_Translate(5.0f,0.0f,2.0f)
                             * Matrix_Rotate_X(-1.57f)
                             * Matrix_Scale(0.3f,0.3f,0.3f);
-        glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model_fly));
+        glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(g_VirtualScene["fly"].model[g_VirtualScene["fly"].ultimo_obj]));
         glUniform1i(object_id_uniform, FLY);
         DrawVirtualObject("fly");
 
 
         //Modelos de coelho e cubo para demonstração do PHONG shading na primeira sala
         giro_coelho += 0.2f * deltatime;
-        if(giro_coelho >= 7.85f){ giro_coelho = 1.57f; }
-        glm::mat4 model_bunny = Matrix_Translate(-20.0f,0.5f,5.0f)
+        /*if(giro_coelho >= 7.85f){ giro_coelho = 1.57f; }
+        g_VirtualScene["bunny"].model = Matrix_Translate(-20.0f,0.5f,5.0f)
                             * Matrix_Rotate_Y(giro_coelho)
                             * Matrix_Scale(1.0f,1.0f,1.0f);
-        glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model_bunny));
+        glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(g_VirtualScene["bunny"].model));
         glUniform1i(object_id_uniform, PHONG);
-        DrawVirtualObject("bunny");
+        DrawVirtualObject("bunny");*/
 
         model_cube = Matrix_Translate(-19.90f,-1.5f,5.0f)
                    * Matrix_Scale(2.0f,2.0f,2.0f);
@@ -837,14 +872,14 @@ int main(int argc, char* argv[])
                 //model = Matrix_Translate(passos.x, passos.y, passos.z);
 
                 // Desenhamos o modelo da esfera
-                model_camera = Matrix_Translate(1.0f,0.0f,-10.0f)
+                g_VirtualScene["camera"].model[0] = Matrix_Translate(1.0f,0.0f,-10.0f)
                             * Matrix_Translate(passos.x, passos.y, passos.z);
                              //* Matrix_Translate(x, -y, z);
 
-                glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model_camera));
+                glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(g_VirtualScene["camera"].model[0]));
                 glUniform1i(object_id_uniform, CAMERA);
 
-                if(colisao(g_VirtualScene["bunny"], g_VirtualScene["camera"], model_bunny, model_camera))
+                if(colisao())
                 {
                     passos -= playermovex*camera_view_vector*glm::vec4(1.0f,0.0f,1.0f,1.0f)*playerspeed*deltatime;
                     camera_position_c -= playermovex*camera_view_vector*glm::vec4(1.0f,0.0f,1.0f,1.0f)*playerspeed*deltatime;
@@ -857,14 +892,14 @@ int main(int argc, char* argv[])
                 camera_position_c += playermovey*u*glm::vec4(1.0f,0.0f,1.0f,1.0f)*playerspeed*deltatime; //vec4 para não se mover para cima, zerando a componente Y
 
                 // Desenhamos o modelo da esfera
-                model_camera =  Matrix_Translate(1.0f,0.0f,-10.0f)
+                g_VirtualScene["camera"].model[0] =  Matrix_Translate(1.0f,0.0f,-10.0f)
                             * Matrix_Translate(passos.x, passos.y, passos.z);
                             //* Matrix_Translate(x, -y, z);
 
-                glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model_camera));
+                glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(g_VirtualScene["camera"].model[0]));
                 glUniform1i(object_id_uniform, CAMERA);
 
-                if(colisao(g_VirtualScene["bunny"], g_VirtualScene["camera"], model_bunny, model_camera))
+                if(colisao())
                 {
                     passos -= playermovey*u*glm::vec4(1.0f,0.0f,1.0f,1.0f)*playerspeed*deltatime;
                     camera_position_c -= playermovey*u*glm::vec4(1.0f,0.0f,1.0f,1.0f)*playerspeed*deltatime;
