@@ -51,8 +51,8 @@
 #include <windows.h>
 
 // Constantes
-#define HEIGHT 800
-#define WIDTH 600
+#define HEIGHT 1280
+#define WIDTH 720
 
 // Estrutura que representa um modelo geométrico carregado a partir de um
 // arquivo ".obj". Veja https://en.wikipedia.org/wiki/Wavefront_.obj_file .
@@ -237,6 +237,7 @@ bool colisao(SceneObject a, SceneObject b, glm::mat4 modelA, glm::mat4 modelB)
 
 }
 
+//TEXTO ANIMADO DE OBJETIVO NO INICIO DO JOGO
 float tempo_antigo = 0.0f;
 float varia_tamanho_texto = 0.0f;
 void TextRendering_Missao(GLFWwindow* window)
@@ -248,7 +249,7 @@ void TextRendering_Missao(GLFWwindow* window)
     if ( varia_tamanho_texto <= 4.5f  )
     {
         varia_tamanho_texto = varia_tamanho_texto+0.8*varia_tempo;
-        TextRendering_PrintString(window, "Encontre o livro para fugir", -1.3f+varia_tamanho_texto/3.5, 0.7f, 4.5f-varia_tamanho_texto);
+        TextRendering_PrintString(window, "Encontre o livro para fugir", -0.85f+varia_tamanho_texto/5, 0.7f, 4.5f-varia_tamanho_texto);
     }
 }
 
@@ -332,7 +333,7 @@ int main(int argc, char* argv[])
     LoadTextureImage("../../data/parede.jpg");       // TextureImage1
     LoadTextureImage("../../data/livro.jpg");        // TextureImage2
     LoadTextureImage("../../data/galaxia.jpg");      // TextureImage3
-    LoadTextureImage("../../data/goo.png");          // TextureImage4
+    LoadTextureImage("../../data/fly.png");          // TextureImage4
 
     // Construímos a representação de objetos geométricos através de malhas de triângulos
     ObjModel cameramodel("../../data/camera.obj");
@@ -1119,6 +1120,7 @@ void LoadShadersFromFiles()
     glUniform1i(glGetUniformLocation(program_id, "TextureImage1"), 1);
     glUniform1i(glGetUniformLocation(program_id, "TextureImage2"), 2);
     glUniform1i(glGetUniformLocation(program_id, "TextureImage3"), 3);
+    glUniform1i(glGetUniformLocation(program_id, "TextureImage4"), 4);
     glUseProgram(0);
 }
 
