@@ -204,6 +204,31 @@ GLuint g_NumLoadedTextures = 0;
 float playermovex = 0.0f;
 float playermovey = 0.0f;
 
+
+//Pontos da primeira curva de bezier
+glm::vec3 bezier_p1 = glm::vec3 (0.0f,0.0f,0.0f);
+glm::vec3 bezier_p2 = glm::vec3 (20.0f,0.0f,0.0f);
+glm::vec3 bezier_p3 = glm::vec3 (0.0f,0.0f,20.0f);
+float bezier_iterator =0;
+float bezier_step =0.01;
+void UpdateBezierMovement();
+glm::vec3 pontos_bezier= glm::vec3(0.0f, 0.0f, 0.0f);
+
+void UpdateBezierMovement(){
+    if(bezier_iterator  > 1 ||bezier_iterator  < 0){
+        bezier_step = -1 * bezier_step;
+        bezier_iterator  += 2*bezier_step;
+    }
+    float t = bezier_iterator ;
+    glm::vec3 c12 = bezier_p1 + t*(bezier_p2- bezier_p1);
+    glm::vec3 c23 = bezier_p2 + t*(bezier_p3- bezier_p2);
+    glm::vec3 c_final = c12 + t*(c23 -  c12);
+
+    pontos_bezier=c_final;
+
+    bezier_iterator  += bezier_step;
+}
+
 bool colisao(SceneObject a, SceneObject b, glm::mat4 modelA, glm::mat4 modelB)
 {
     glm::vec4 a_new_max = glm::vec4(a.bbox_max.x, a.bbox_max.y, a.bbox_max.z, 0.0f) * modelA ;
@@ -1597,8 +1622,8 @@ void CursorPosCallback(GLFWwindow* window, double xpos, double ypos)
     float dy = ypos - g_LastCursorPosY;
 
     // Atualizamos parâmetros da câmera com os deslocamentos
-    g_CameraTheta -= 0.005f*dx; //0.005 é a sensibilidade da camera
-    g_CameraPhi   += 0.005f*dy; //0.005 é a sensibilidade da camera
+    g_CameraTheta -= 0.003f*dx; //0.005 é a sensibilidade da camera
+    g_CameraPhi   += 0.003f*dy; //0.005 é a sensibilidade da camera
 
     // Em coordenadas esféricas, o ângulo phi deve ficar entre -pi/2 e +pi/2.
     float phimax = 3.141592f/2;
