@@ -211,22 +211,23 @@ float playermovey = 0.0f;
 
 
 //Pontos da primeira curva de bezier
-glm::vec3 bezier_p1 = glm::vec3 (-25.0f,2.0f,40.0f);
-glm::vec3 bezier_p2 = glm::vec3 (-25.0f,20.0f,50.0f);
+glm::vec3 bezier_p0 = glm::vec3 (-25.0f,2.0f,40.0f);
+glm::vec3 bezier_p1 = glm::vec3 (-25.0f,20.0f,45.0f);
+glm::vec3 bezier_p2 = glm::vec3 (-25.0f,20.0f,55.0f);
 glm::vec3 bezier_p3 = glm::vec3 (-25.0f,2.0f,60.0f);
 float t_bezier = 0.0;
-float t_increment = 0.15;
+float t_increment = 0.3;
 glm::vec3 pontos_bezier = glm::vec3(0.0f, 0.0f, 0.0f);
 
 void UpdateBezierMovement(float delta_time){
-    if(t_bezier <= 0)t_increment = 0.2;
-    if(t_bezier >= 1)t_increment = -0.2;
-
-    glm::vec3 c12 = bezier_p1 + t_bezier*(bezier_p2- bezier_p1);
-    glm::vec3 c23 = bezier_p2 + t_bezier*(bezier_p3- bezier_p2);
-    pontos_bezier = c12 + t_bezier*(c23 -  c12);
-
     t_bezier += t_increment*delta_time;
+    if(t_bezier < 0 || t_bezier > 1)
+    {
+        t_increment *= -1;
+        t_bezier += t_increment*delta_time;
+    }
+    pontos_bezier = bezier_p0*(1-t_bezier)*(1-t_bezier)*(1-t_bezier) + 3*t_bezier*(1-t_bezier)*(1-t_bezier)*bezier_p1 +
+    (3*t_bezier)*(t_bezier)*(1-t_bezier)*bezier_p2 + (t_bezier)*(t_bezier)*(t_bezier)*bezier_p3;
 }
 
 
@@ -445,6 +446,11 @@ void TextRendering_Missao(GLFWwindow* window)
     }
 }
 
+void TextRendering_Fim(GLFWwindow* window)
+{
+    TextRendering_PrintString(window, "Voce consegui escapar! Pressione ESC para fechar o jogo", -0.9f, 0.7f, 2.5f);
+}
+
 int main(int argc, char* argv[])
 {
     // Inicializamos a biblioteca GLFW, utilizada para criar uma janela do
@@ -584,7 +590,7 @@ int main(int argc, char* argv[])
     glm::mat4 the_view;
 
     //Inicializa posição e camera do jogador
-    float x_camera = 0.0f, y_camera = 40.0f, z_camera = -10.0f, y_obj_camera = 1.0f;
+    float x_camera = 0.0f, y_camera = 30.0f, z_camera = -10.0f, y_obj_camera = 1.0f;
     glm::vec4 camera_position_c  = glm::vec4(x_camera,y_camera,z_camera ,1.0f); // Ponto "c", centro da câmera
     glm::vec4 camera_view_vector = glm::vec4(1.0f,1.0f,0.0f,0.0f);
     glm::vec4 passos = glm::vec4(0.0f,0.0f,0.0f,0.0f);
@@ -1240,6 +1246,7 @@ int main(int argc, char* argv[])
             glUniformMatrix4fv(view_uniform       , 1 , GL_FALSE , glm::value_ptr(view));
             glUniformMatrix4fv(projection_uniform , 1 , GL_FALSE , glm::value_ptr(projection));
         }
+        if(fim) TextRendering_Fim(window);
 
         // Computamos a matriz "View" utilizando os parâmetros da câmera para
         // definir o sistema de coordenadas da câmera.  Veja slides 2-14, 184-190 e 236-242 do documento Aula_08_Sistemas_de_Coordenadas.pdf.
