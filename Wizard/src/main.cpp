@@ -143,7 +143,8 @@ void MouseButtonCallback(GLFWwindow* window, int button, int action, int mods);
 void CursorPosCallback(GLFWwindow* window, double xpos, double ypos);
 void ScrollCallback(GLFWwindow* window, double xoffset, double yoffset);
 
-// Abaixo definimos variáveis globais utilizadas em várias funções do código.
+//Função para atualizar os pontos da curva de bezier
+void UpdateBezierMovement();
 
 // A cena virtual é uma lista de objetos nomeados, guardados em um dicionário
 // (map).  Veja dentro da função BuildTrianglesAndAddToVirtualScene() como que são incluídos
@@ -210,27 +211,22 @@ float playermovey = 0.0f;
 
 
 //Pontos da primeira curva de bezier
-glm::vec3 bezier_p1 = glm::vec3 (0.0f,0.0f,0.0f);
-glm::vec3 bezier_p2 = glm::vec3 (20.0f,0.0f,0.0f);
-glm::vec3 bezier_p3 = glm::vec3 (0.0f,0.0f,20.0f);
-float bezier_iterator =0;
-float bezier_step =0.01;
-void UpdateBezierMovement();
-glm::vec3 pontos_bezier= glm::vec3(0.0f, 0.0f, 0.0f);
+glm::vec3 bezier_p1 = glm::vec3 (-25.0f,2.0f,40.0f);
+glm::vec3 bezier_p2 = glm::vec3 (-25.0f,20.0f,50.0f);
+glm::vec3 bezier_p3 = glm::vec3 (-25.0f,2.0f,60.0f);
+float t_bezier = 0.0;
+float t_increment = 0.15;
+glm::vec3 pontos_bezier = glm::vec3(0.0f, 0.0f, 0.0f);
 
-void UpdateBezierMovement(){
-    if(bezier_iterator  > 1 ||bezier_iterator  < 0){
-        bezier_step = -1 * bezier_step;
-        bezier_iterator  += 2*bezier_step;
-    }
-    float t = bezier_iterator ;
-    glm::vec3 c12 = bezier_p1 + t*(bezier_p2- bezier_p1);
-    glm::vec3 c23 = bezier_p2 + t*(bezier_p3- bezier_p2);
-    glm::vec3 c_final = c12 + t*(c23 -  c12);
+void UpdateBezierMovement(float delta_time){
+    if(t_bezier <= 0)t_increment = 0.2;
+    if(t_bezier >= 1)t_increment = -0.2;
 
-    pontos_bezier=c_final;
+    glm::vec3 c12 = bezier_p1 + t_bezier*(bezier_p2- bezier_p1);
+    glm::vec3 c23 = bezier_p2 + t_bezier*(bezier_p3- bezier_p2);
+    pontos_bezier = c12 + t_bezier*(c23 -  c12);
 
-    bezier_iterator  += bezier_step;
+    t_bezier += t_increment*delta_time;
 }
 
 
@@ -598,6 +594,7 @@ int main(int argc, char* argv[])
 
     //animações
     float altura_porta1 = 5.0f;
+    float altura_porta2 = 5.0f;
     float giro_coelho = 1.57f;
 
     bool fim = false;
@@ -607,8 +604,8 @@ int main(int argc, char* argv[])
     g_VirtualScene["bunny"].clicado = false;
     g_VirtualScene["fly"].clicado = false;
 
-    int textura_bunny, textura_fly, x_bunny = 3.0f, y_bunny = 0.0f, z_bunny = 0.0f;
-    int x_fly = -5.0f, y_fly = 3.0f, z_fly = 2.0f;
+    int textura_bunny, textura_fly, x_bunny = -30.0f, y_bunny = 0.0f, z_bunny = -2.0f;
+    int x_fly = -25.0f, y_fly = 3.0f, z_fly = 40.0f;
 
     // Ficamos em loop, renderizando, até que o usuário feche a janela
     while (!glfwWindowShouldClose(window))
@@ -676,7 +673,6 @@ int main(int argc, char* argv[])
         {
             textura_bunny = PHONG;
         }
-
         if(textura_bunny == PHONG && g_LeftMouseButtonPressed && !clique(camera_position_c, camera_view_vector).compare("bunny") &&  g_VirtualScene["bunny"].clicado)
         {
             if(z>0)
@@ -690,7 +686,6 @@ int main(int argc, char* argv[])
 
         }
         else if(textura_fly == PHONG && g_LeftMouseButtonPressed && !clique(camera_position_c, camera_view_vector).compare("fly") &&  g_VirtualScene["fly"].clicado)
-        {
             if(z>0)
             {
                 z_fly = z_fly + 1.0f;
@@ -699,7 +694,6 @@ int main(int argc, char* argv[])
             {
                 z_fly =  z_fly - 1.0f;
             }
-        }
 
         g_VirtualScene["bunny"].model[g_VirtualScene["bunny"].ultimo_obj] = Matrix_Translate(x_bunny,y_bunny,z_bunny);
             glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(g_VirtualScene["bunny"].model[g_VirtualScene["bunny"].ultimo_obj++]));
@@ -707,9 +701,19 @@ int main(int argc, char* argv[])
             DrawVirtualObject("bunny");
 
         if(!g_VirtualScene["fly"].clicado)
+        {
+            UpdateBezierMovement(deltatime);
+            x_fly = pontos_bezier.x;
+            y_fly = pontos_bezier.y;
+            z_fly = pontos_bezier.z;
             textura_fly = FLY;
+        }
         else
+        {
             textura_fly = PHONG;
+            y_fly = y_fly - 0.1*deltatime;
+        }
+
 
         g_VirtualScene["fly"].model[g_VirtualScene["fly"].ultimo_obj] = Matrix_Translate(x_fly,y_fly,z_fly)
                             * Matrix_Scale(0.3f,0.3f,0.3f);
@@ -1057,6 +1061,17 @@ int main(int argc, char* argv[])
             altura_porta1 = altura_porta1 - 2.0f * deltatime;
         }
         model_parede = Matrix_Translate(0.0f,altura_porta1,25.0f)
+                         * Matrix_Rotate_X(1.57f)
+                         * Matrix_Scale(10.0f,0.5f,15.0f);
+        glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model_parede));
+        glUniform1i(object_id_uniform, PAREDEP);
+        DrawVirtualObject("parede");
+
+        //PORTA DA SALA DO LIVRO
+        if(altura_porta2 >= -10.0f && textura_fly == PHONG){
+            altura_porta2 = altura_porta2 - 2.0f * deltatime;
+        }
+        model_parede = Matrix_Translate(-50.0f,altura_porta2,75.0f)
                          * Matrix_Rotate_X(1.57f)
                          * Matrix_Scale(10.0f,0.5f,15.0f);
         glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model_parede));
