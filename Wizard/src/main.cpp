@@ -93,9 +93,9 @@ struct SceneObject
     GLuint       vertex_array_object_id; // ID do VAO onde estão armazenados os atributos do modelo
     glm::vec3    bbox_min; // Axis-Aligned Bounding Box do objeto
     glm::vec3    bbox_max;
-    int          ultimo_obj= 0;
+    int          ultimo_obj;
     glm::mat4    model[MAX_OBJ_MESMA_CLASSE];
-    //glm::mat4    model;
+    bool         clicado = false;
 };
 
 // Declaração de funções utilizadas para pilha de matrizes de modelagem.
@@ -233,35 +233,80 @@ void UpdateBezierMovement(){
     bezier_iterator  += bezier_step;
 }
 
-bool _colisao(std::string obj1, std::string obj2, int indice)
+
+void obb_to_aabb(std::string obj, int num_obj)
 {
-    SceneObject a = g_VirtualScene[obj1];
-    SceneObject b = g_VirtualScene[obj2];
+    glm::vec4 ponto[8];
 
+    //Oito pontos da minha Bounding Box
+    ponto[0] = glm::vec4(g_VirtualScene[obj].bbox_min.x, g_VirtualScene[obj].bbox_min.y, g_VirtualScene[obj].bbox_min.z, 1.0f);
+    ponto[1] = glm::vec4(g_VirtualScene[obj].bbox_min.x, g_VirtualScene[obj].bbox_min.y, g_VirtualScene[obj].bbox_max.z, 1.0f);
+    ponto[2] = glm::vec4(g_VirtualScene[obj].bbox_min.x, g_VirtualScene[obj].bbox_max.y, g_VirtualScene[obj].bbox_min.z, 1.0f);
+    ponto[3] = glm::vec4(g_VirtualScene[obj].bbox_max.x, g_VirtualScene[obj].bbox_min.y, g_VirtualScene[obj].bbox_min.z, 1.0f);
+    ponto[4] = glm::vec4(g_VirtualScene[obj].bbox_min.x, g_VirtualScene[obj].bbox_max.y, g_VirtualScene[obj].bbox_max.z, 1.0f);
+    ponto[5] = glm::vec4(g_VirtualScene[obj].bbox_max.x, g_VirtualScene[obj].bbox_min.y, g_VirtualScene[obj].bbox_max.z, 1.0f);
+    ponto[6] = glm::vec4(g_VirtualScene[obj].bbox_max.x, g_VirtualScene[obj].bbox_max.y, g_VirtualScene[obj].bbox_min.z, 1.0f);
+    ponto[7] = glm::vec4(g_VirtualScene[obj].bbox_max.x, g_VirtualScene[obj].bbox_max.y, g_VirtualScene[obj].bbox_max.z, 1.0f);
 
-    glm::mat4 modelA = a.model[indice];
-    glm::mat4 modelB = b.model[indice];
+    glm::vec4 novo_min = glm::vec4(-10000000.0f,-10000000.0f, -10000000.0f, 1.0f);
+    glm::vec4 novo_max = glm::vec4(10000000.0f,10000000.0f,10000000.0f, 1.0f);
 
-    glm::vec4 a_new_max = glm::vec4(a.bbox_max.x, a.bbox_max.y, a.bbox_max.z, 0.0f) * modelA ;
-    glm::vec4 a_new_min = glm::vec4(a.bbox_min.x, a.bbox_min.y, a.bbox_min.z, 0.0f) * modelA;
-    glm::vec4 b_new_max = glm::vec4(b.bbox_max.x, b.bbox_max.y, b.bbox_max.z, 0.0f) * modelB;
-    glm::vec4 b_new_min = glm::vec4(b.bbox_min.x, b.bbox_min.y, b.bbox_min.z, 0.0f) * modelB;
+    int i;
 
-    a_new_max.x += modelA[3][0];
-    a_new_max.y += modelA[3][1];
-    a_new_max.z += modelA[3][2];
+    for(i=0;i<=7;i++)
+    {
+        glm::vec4 novo_ponto = g_VirtualScene[obj].model[num_obj] * ponto[i];
+        novo_min.x = std::min(novo_min.x, novo_ponto.x);
+        novo_min.y = std::min(novo_min.y, novo_ponto.y);
+        novo_min.z = std::min(novo_min.z, novo_ponto.z);
+        novo_max.x = std::max(novo_max.x, novo_ponto.x);
+        novo_max.y = std::max(novo_max.y, novo_ponto.y);
+        novo_max.z = std::max(novo_max.z, novo_ponto.z);
+    }
+
+    g_VirtualScene[obj].bbox_min = glm::vec3(novo_min.x, novo_min.y, novo_min.z);
+    g_VirtualScene[obj].bbox_max = glm::vec3(novo_max.x, novo_max.y, novo_max.z);;
+
+}
+
+glm::vec4 aplica_transformacoes_min(SceneObject a, glm::mat4 modelA)
+{
+
+    glm::vec4 a_new_min = glm::vec4(a.bbox_min.x, a.bbox_min.y, a.bbox_min.z, 0.0f) * modelA ;
 
     a_new_min.x += modelA[3][0];
     a_new_min.y += modelA[3][1];
     a_new_min.z += modelA[3][2];
 
-    b_new_max.x += modelB[3][0];
-    b_new_max.y += modelB[3][1];
-    b_new_max.z += modelB[3][2];
+    return a_new_min;
+}
 
-    b_new_min.x += modelB[3][0];
-    b_new_min.y += modelB[3][1];
-    b_new_min.z += modelB[3][2];
+glm::vec4 aplica_transformacoes_max(SceneObject a, glm::mat4 modelA)
+{
+
+    glm::vec4 a_new_max = glm::vec4(a.bbox_max.x, a.bbox_max.y, a.bbox_max.z, 0.0f) * modelA ;
+
+    a_new_max.x += modelA[3][0];
+    a_new_max.y += modelA[3][1];
+    a_new_max.z += modelA[3][2];
+
+    return a_new_max;
+}
+
+
+bool _colisao(std::string obj1, std::string obj2, int indice)
+{
+    SceneObject a = g_VirtualScene[obj1];
+    SceneObject b = g_VirtualScene[obj2];
+
+    glm::mat4 modelA = a.model[indice];
+    glm::mat4 modelB = b.model[indice];
+
+    glm::vec4 a_new_min = aplica_transformacoes_min(a, modelA);
+    glm::vec4 a_new_max = aplica_transformacoes_max(a, modelA);
+    glm::vec4 b_new_min = aplica_transformacoes_min(b, modelB);
+    glm::vec4 b_new_max = aplica_transformacoes_max(b, modelB);
+
 
 
     return(a_new_max.x > b_new_min.x &&
@@ -273,21 +318,86 @@ bool _colisao(std::string obj1, std::string obj2, int indice)
 
 }
 
-bool colisao()
+bool intersect(glm::vec4 origem, glm::vec4 direcao, std::string obj, int indice)
+{
+
+    glm::mat4 modelA = g_VirtualScene[obj].model[indice];
+    glm::vec4 obb_min = aplica_transformacoes_min(g_VirtualScene[obj], modelA);
+    glm::vec4 obb_max = aplica_transformacoes_max(g_VirtualScene[obj], modelA);
+
+    float tmin = (obb_min.x - origem.x) / direcao.x;
+    float tmax = (obb_max.x - origem.x) / direcao.x;
+    float aux;
+
+    if (tmin > tmax)
+    {
+        aux = tmin;
+        tmin = tmax;
+        tmax = aux;
+    }
+
+
+    float tymin = (obb_min.y - origem.y) / direcao.y;
+    float tymax = (obb_max.y - origem.y) / direcao.y;
+
+    if (tymin > tymax)
+    {
+        aux = tymin;
+        tymin = tymax;
+        tymax = aux;
+    }
+
+    if ((tmin > tymax) || (tymin > tmax))
+        return false;
+
+    if (tymin > tmin)
+        tmin = tymin;
+
+    if (tymax < tmax)
+        tmax = tymax;
+
+    float tzmin = (obb_min.z - origem.z) / direcao.z;
+    float tzmax = (obb_max.z - origem.z) / direcao.z;
+
+    if (tzmin > tzmax)
+    {
+        aux = tzmin;
+        tzmin = tzmax;
+        tzmax = aux;
+    }
+
+    if ((tmin > tzmax) || (tzmin > tmax))
+        return false;
+
+    if (tzmin > tmin)
+        tmin = tzmin;
+
+    if (tzmax < tmax)
+        tmax = tzmax;
+
+    return true;
+}
+
+
+bool colisao(glm::vec4 origem, glm::vec4 direcao)
 {
     int max_obj;
     bool colidiu = false;
     int i = 0, j=0;
-    int quantidade_obj = 2;
-    //std::string lista_objetos[4] = {"bunny", "cube", "parede", "cylinder"};
-    std::string lista_objetos[quantidade_obj] = {"bunny", "fly"};
+    int quantidade_obj = 3;
+    //std::string lista_objetos[quantidade_obj] = {"bunny", "fly",  "parede", "cube"};
+    std::string lista_objetos[quantidade_obj] = {"bunny", "fly", "cube"};
 
     for(i=0; i<quantidade_obj;i++)
     {
         max_obj = g_VirtualScene[lista_objetos[i]].ultimo_obj;
         for(j=0;j<=max_obj;j++)
         {
-            colidiu = colidiu || _colisao(lista_objetos[i], "camera", j);
+
+            /*if(lista_objetos[i].compare("cylinder") == 0)
+                colidiu = colidiu || intersect(origem, direcao, lista_objetos[i], i);
+            else*/
+                colidiu = colidiu || _colisao(lista_objetos[i], "camera", j);
 
             if(colidiu)
                 return true;
@@ -296,6 +406,32 @@ bool colisao()
 
     return false;
 }
+
+std::string clique(glm::vec4 origem, glm::vec4 direcao)
+{
+    int max_obj;
+    bool colidiu = false;
+    int i = 0, j=0;
+    int quantidade_obj = 2;
+    //std::string lista_objetos[quantidade_obj] = {"bunny", "fly",  "parede", "cube"};
+    std::string lista_objetos[quantidade_obj] = {"bunny", "fly"};
+
+    for(i=0; i<quantidade_obj;i++)
+    {
+        max_obj = g_VirtualScene[lista_objetos[i]].ultimo_obj;
+        for(j=0;j<=max_obj;j++)
+        {
+
+            colidiu = intersect(origem, direcao, lista_objetos[i], j);
+
+            if(colidiu)
+                return lista_objetos[i];
+        }
+    }
+
+    return " ";
+}
+
 
 //TEXTO ANIMADO DE OBJETIVO NO INICIO DO JOGO
 float tempo_antigo = 0.0f;
@@ -452,9 +588,10 @@ int main(int argc, char* argv[])
     glm::mat4 the_view;
 
     //Inicializa posição e camera do jogador
-    glm::vec4 camera_position_c  = glm::vec4(0.0f,40.0f,-20.0f,1.0f); // Ponto "c", centro da câmera
+    float x_camera = 0.0f, y_camera = 40.0f, z_camera = -10.0f, y_obj_camera = 1.0f;
+    glm::vec4 camera_position_c  = glm::vec4(x_camera,y_camera,z_camera ,1.0f); // Ponto "c", centro da câmera
     glm::vec4 camera_view_vector = glm::vec4(1.0f,1.0f,0.0f,0.0f);
-    glm::vec4 passos = glm::vec4(0.0f,0.0f,-10.0f,0.0f);
+    glm::vec4 passos = glm::vec4(0.0f,0.0f,0.0f,0.0f);
 
     float playerspeed = 3.0f;
     float timeprev = 0.0f;
@@ -466,6 +603,12 @@ int main(int argc, char* argv[])
     bool fim = false;
 
     bool inicializa_look_camera = true;
+
+    g_VirtualScene["bunny"].clicado = false;
+    g_VirtualScene["fly"].clicado = false;
+
+    int textura_bunny, textura_fly, x_bunny = 3.0f, y_bunny = 0.0f, z_bunny = 0.0f;
+    int x_fly = -5.0f, y_fly = 3.0f, z_fly = 2.0f;
 
     // Ficamos em loop, renderizando, até que o usuário feche a janela
     while (!glfwWindowShouldClose(window))
@@ -517,18 +660,70 @@ int main(int argc, char* argv[])
         //model = Matrix_Translate(1.0f,0.0f,-8.0f);
 
         // Desenhamos o modelo do coelho
-        g_VirtualScene["bunny"].model[g_VirtualScene["bunny"].ultimo_obj] = Matrix_Translate(1.0f,0.0f,0.0f);
-        glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(g_VirtualScene["bunny"].model[g_VirtualScene["bunny"].ultimo_obj]));
-        glUniform1i(object_id_uniform, BUNNY);
-        DrawVirtualObject("bunny");
+        g_VirtualScene["bunny"].ultimo_obj = 0;
+        g_VirtualScene["cube"].ultimo_obj = 0;
+        g_VirtualScene["parede"].ultimo_obj = 0;
+        g_VirtualScene["cylinder"].ultimo_obj = 0;
+
+        //g_VirtualScene["bunny"].clicado = false;
+
+
+        if(!g_VirtualScene["bunny"].clicado)
+        {
+            textura_bunny = BUNNY;
+        }
+        else
+        {
+            textura_bunny = PHONG;
+        }
+
+        if(textura_bunny == PHONG && g_LeftMouseButtonPressed && !clique(camera_position_c, camera_view_vector).compare("bunny") &&  g_VirtualScene["bunny"].clicado)
+        {
+            if(z>0)
+            {
+                z_bunny = z_bunny + 1.0f;
+            }
+            else
+            {
+                z_bunny =  z_bunny - 1.0f;
+            }
+
+        }
+        else if(textura_fly == PHONG && g_LeftMouseButtonPressed && !clique(camera_position_c, camera_view_vector).compare("fly") &&  g_VirtualScene["fly"].clicado)
+        {
+            if(z>0)
+            {
+                z_fly = z_fly + 1.0f;
+            }
+            else
+            {
+                z_fly =  z_fly - 1.0f;
+            }
+        }
+
+        g_VirtualScene["bunny"].model[g_VirtualScene["bunny"].ultimo_obj] = Matrix_Translate(x_bunny,y_bunny,z_bunny);
+            glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(g_VirtualScene["bunny"].model[g_VirtualScene["bunny"].ultimo_obj++]));
+            glUniform1i(object_id_uniform, textura_bunny);
+            DrawVirtualObject("bunny");
+
+        if(!g_VirtualScene["fly"].clicado)
+            textura_fly = FLY;
+        else
+            textura_fly = PHONG;
+
+        g_VirtualScene["fly"].model[g_VirtualScene["fly"].ultimo_obj] = Matrix_Translate(x_fly,y_fly,z_fly)
+                            * Matrix_Scale(0.3f,0.3f,0.3f);
+        glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(g_VirtualScene["fly"].model[g_VirtualScene["fly"].ultimo_obj]));
+        glUniform1i(object_id_uniform, textura_fly);
+        DrawVirtualObject("fly");
+
 
         // Desenhamos o modelo da esfera
-        g_VirtualScene["camera"].model[0] = Matrix_Translate(1.0f,0.0f,-10.0f)
+        g_VirtualScene["camera"].model[0] = Matrix_Translate(0.0f,0.0f,z_camera)
                      * Matrix_Translate(passos.x, passos.y, passos.z);
-                     //* Matrix_Translate(x, -y, z);
-
         glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(g_VirtualScene["camera"].model[0]));
         glUniform1i(object_id_uniform, CAMERA);
+
 
         //----------------------------DESENHOS DO MAPA----------------------------
         if (true){ //só pra poder esconder isso, pra não ficar essa tripa enorme
@@ -734,115 +929,127 @@ int main(int argc, char* argv[])
 
         //pilares
         //primeira sala
-        glm::mat4 model_cylinder = Matrix_Translate(-10.0f,25.0f,25.0f)
+        giro_coelho += 0.2f * deltatime;
+         g_VirtualScene["cylinder"].model[g_VirtualScene["cylinder"].ultimo_obj] = Matrix_Translate(-10.0f,25.0f,25.0f)
+                                * Matrix_Rotate_Y(giro_coelho)
                                 * Matrix_Rotate_X(1.57f)
                                 * Matrix_Scale(1.0f,1.0f,10.0f);
-        glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model_cylinder));
+        glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(g_VirtualScene["cylinder"].model[g_VirtualScene["cylinder"].ultimo_obj++]));
         glUniform1i(object_id_uniform, CYLINDER);
         DrawVirtualObject("cylinder");
 
-        model_cylinder = Matrix_Translate(10.0f,25.0f,25.0f)
+        g_VirtualScene["cylinder"].model[g_VirtualScene["cylinder"].ultimo_obj] = Matrix_Translate(10.0f,25.0f,25.0f)
+                                * Matrix_Rotate_Y(giro_coelho)
                                 * Matrix_Rotate_X(1.57f)
                                 * Matrix_Scale(1.0f,1.0f,10.0f);
-        glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model_cylinder));
+        glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(g_VirtualScene["cylinder"].model[g_VirtualScene["cylinder"].ultimo_obj++]));
         glUniform1i(object_id_uniform, CYLINDER);
         DrawVirtualObject("cylinder");
 
-        model_cylinder = Matrix_Translate(-10.0f,25.0f,-25.0f)
+        g_VirtualScene["cylinder"].model[g_VirtualScene["cylinder"].ultimo_obj] = Matrix_Translate(-10.0f,25.0f,-25.0f)
+                                * Matrix_Rotate_Y(giro_coelho)
                                 * Matrix_Rotate_X(1.57f)
                                 * Matrix_Scale(1.0f,1.0f,10.0f);
-        glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model_cylinder));
+        glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(g_VirtualScene["cylinder"].model[g_VirtualScene["cylinder"].ultimo_obj++]));
         glUniform1i(object_id_uniform, CYLINDER);
         DrawVirtualObject("cylinder");
 
-        model_cylinder = Matrix_Translate(10.0f,25.0f,-25.0f)
+        g_VirtualScene["cylinder"].model[g_VirtualScene["cylinder"].ultimo_obj] = Matrix_Translate(10.0f,25.0f,-25.0f)
+                                * Matrix_Rotate_Y(giro_coelho)
                                 * Matrix_Rotate_X(1.57f)
                                 * Matrix_Scale(1.0f,1.0f,10.0f);
-        glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model_cylinder));
+        glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(g_VirtualScene["cylinder"].model[g_VirtualScene["cylinder"].ultimo_obj++]));
         glUniform1i(object_id_uniform, CYLINDER);
         DrawVirtualObject("cylinder");
 
         //sala do meio
-        model_cylinder = Matrix_Translate(0.0f,25.0f,50.0f)
+        g_VirtualScene["cylinder"].model[g_VirtualScene["cylinder"].ultimo_obj] = Matrix_Translate(0.0f,25.0f,50.0f)
+                                * Matrix_Rotate_Y(giro_coelho)
                                 * Matrix_Rotate_X(1.57f)
                                 * Matrix_Scale(1.0f,1.0f,10.0f);
-        glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model_cylinder));
+        glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(g_VirtualScene["cylinder"].model[g_VirtualScene["cylinder"].ultimo_obj++]));
         glUniform1i(object_id_uniform, CYLINDER);
         DrawVirtualObject("cylinder");
 
-        model_cylinder = Matrix_Translate(-50.0f,25.0f,50.0f)
+        g_VirtualScene["cylinder"].model[g_VirtualScene["cylinder"].ultimo_obj] = Matrix_Translate(-50.0f,25.0f,50.0f)
+                                * Matrix_Rotate_Y(giro_coelho)
                                 * Matrix_Rotate_X(1.57f)
                                 * Matrix_Scale(1.0f,1.0f,10.0f);
-        glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model_cylinder));
+        glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(g_VirtualScene["cylinder"].model[g_VirtualScene["cylinder"].ultimo_obj++]));
         glUniform1i(object_id_uniform, CYLINDER);
         DrawVirtualObject("cylinder");
 
         //sala do livro
-        model_cylinder = Matrix_Translate(-60.0f,25.0f,75.0f)
+        g_VirtualScene["cylinder"].model[g_VirtualScene["cylinder"].ultimo_obj] = Matrix_Translate(-60.0f,25.0f,75.0f)
+                                * Matrix_Rotate_Y(giro_coelho)
                                 * Matrix_Rotate_X(1.57f)
                                 * Matrix_Scale(1.0f,1.0f,10.0f);
-        glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model_cylinder));
+        glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(g_VirtualScene["cylinder"].model[g_VirtualScene["cylinder"].ultimo_obj++]));
         glUniform1i(object_id_uniform, CYLINDER);
         DrawVirtualObject("cylinder");
 
-        model_cylinder = Matrix_Translate(-40.0f,25.0f,75.0f)
+        g_VirtualScene["cylinder"].model[g_VirtualScene["cylinder"].ultimo_obj] = Matrix_Translate(-40.0f,25.0f,75.0f)
+                                * Matrix_Rotate_Y(giro_coelho)
                                 * Matrix_Rotate_X(1.57f)
                                 * Matrix_Scale(1.0f,1.0f,10.0f);
-        glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model_cylinder));
+        glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(g_VirtualScene["cylinder"].model[g_VirtualScene["cylinder"].ultimo_obj++]));
         glUniform1i(object_id_uniform, CYLINDER);
         DrawVirtualObject("cylinder");
 
-        model_cylinder = Matrix_Translate(-60.0f,25.0f,125.0f)
+        g_VirtualScene["cylinder"].model[g_VirtualScene["cylinder"].ultimo_obj] = Matrix_Translate(-60.0f,25.0f,125.0f)
+                                * Matrix_Rotate_Y(giro_coelho)
                                 * Matrix_Rotate_X(1.57f)
                                 * Matrix_Scale(1.0f,1.0f,10.0f);
-        glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model_cylinder));
+        glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(g_VirtualScene["cylinder"].model[g_VirtualScene["cylinder"].ultimo_obj++]));
         glUniform1i(object_id_uniform, CYLINDER);
         DrawVirtualObject("cylinder");
 
-        model_cylinder = Matrix_Translate(-40.0f,25.0f,125.0f)
+        g_VirtualScene["cylinder"].model[g_VirtualScene["cylinder"].ultimo_obj] = Matrix_Translate(-40.0f,25.0f,125.0f)
+                                * Matrix_Rotate_Y(giro_coelho)
                                 * Matrix_Rotate_X(1.57f)
                                 * Matrix_Scale(1.0f,1.0f,10.0f);
-        glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model_cylinder));
+        glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(g_VirtualScene["cylinder"].model[g_VirtualScene["cylinder"].ultimo_obj++]));
         glUniform1i(object_id_uniform, CYLINDER);
         DrawVirtualObject("cylinder");
 
-        model_cylinder = Matrix_Translate(-65.0f,25.0f,100.0f)
+        g_VirtualScene["cylinder"].model[g_VirtualScene["cylinder"].ultimo_obj] = Matrix_Translate(-65.0f,25.0f,100.0f)
+                                * Matrix_Rotate_Y(giro_coelho)
                                 * Matrix_Rotate_X(1.57f)
                                 * Matrix_Scale(1.0f,1.0f,10.0f);
-        glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model_cylinder));
+        glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(g_VirtualScene["cylinder"].model[g_VirtualScene["cylinder"].ultimo_obj++]));
         glUniform1i(object_id_uniform, CYLINDER);
         DrawVirtualObject("cylinder");
 
-        model_cylinder = Matrix_Translate(-35.0f,25.0f,100.0f)
+        g_VirtualScene["cylinder"].model[g_VirtualScene["cylinder"].ultimo_obj] = Matrix_Translate(-35.0f,25.0f,100.0f)
+                                * Matrix_Rotate_Y(giro_coelho)
                                 * Matrix_Rotate_X(1.57f)
                                 * Matrix_Scale(1.0f,1.0f,10.0f);
-        glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model_cylinder));
+        glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(g_VirtualScene["cylinder"].model[g_VirtualScene["cylinder"].ultimo_obj++]));
         glUniform1i(object_id_uniform, CYLINDER);
         DrawVirtualObject("cylinder");
 
-        g_VirtualScene["fly"].model[g_VirtualScene["fly"].ultimo_obj] = Matrix_Translate(5.0f,0.0f,2.0f)
-                            * Matrix_Rotate_X(-1.57f)
-                            * Matrix_Scale(0.3f,0.3f,0.3f);
-        glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(g_VirtualScene["fly"].model[g_VirtualScene["fly"].ultimo_obj]));
-        glUniform1i(object_id_uniform, FLY);
-        DrawVirtualObject("fly");
 
 
         //Modelos de coelho e cubo para demonstração do PHONG shading na primeira sala
         giro_coelho += 0.2f * deltatime;
-        /*if(giro_coelho >= 7.85f){ giro_coelho = 1.57f; }
-        g_VirtualScene["bunny"].model = Matrix_Translate(-20.0f,0.5f,5.0f)
+        if(giro_coelho >= 7.85f){ giro_coelho = 1.57f; }
+        g_VirtualScene["bunny"].model[g_VirtualScene["bunny"].ultimo_obj] = Matrix_Translate(-20.0f,0.5f,5.0f)
                             * Matrix_Rotate_Y(giro_coelho)
                             * Matrix_Scale(1.0f,1.0f,1.0f);
-        glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(g_VirtualScene["bunny"].model));
+        glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(g_VirtualScene["bunny"].model[g_VirtualScene["bunny"].ultimo_obj++]));
         glUniform1i(object_id_uniform, PHONG);
-        DrawVirtualObject("bunny");*/
+        DrawVirtualObject("bunny");
 
-        model_cube = Matrix_Translate(-19.90f,-1.5f,5.0f)
-                   * Matrix_Scale(2.0f,2.0f,2.0f);
-        glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model_cube));
+        g_VirtualScene["cube"].model[g_VirtualScene["cube"].ultimo_obj] = Matrix_Translate(-19.90f,-1.5f,5.0f)
+                                                                        * Matrix_Scale(2.0f,2.0f,2.0f);
+        glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(g_VirtualScene["cube"].model[g_VirtualScene["cube"].ultimo_obj]));
         glUniform1i(object_id_uniform, PHONG);
         DrawVirtualObject("cube");
+
+        g_VirtualScene["cube"].model[g_VirtualScene["cube"].ultimo_obj] = Matrix_Translate(-19.90f,0.0f,5.0f)
+                                                                        * Matrix_Scale(2.0f,2.0f,2.0f);
+        glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(g_VirtualScene["cube"].model[g_VirtualScene["cube"].ultimo_obj]));
+        glUniform1i(object_id_uniform, PHONG);
 
         //porta da primeira sala
 
@@ -872,18 +1079,25 @@ int main(int argc, char* argv[])
                 //model = Matrix_Translate(passos.x, passos.y, passos.z);
 
                 // Desenhamos o modelo da esfera
-                g_VirtualScene["camera"].model[0] = Matrix_Translate(1.0f,0.0f,-10.0f)
-                            * Matrix_Translate(passos.x, passos.y, passos.z);
-                             //* Matrix_Translate(x, -y, z);
+                 g_VirtualScene["camera"].model[0] = Matrix_Translate(0.0f,y_obj_camera,z_camera)
+                     * Matrix_Translate(passos.x, passos.y, passos.z);
 
                 glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(g_VirtualScene["camera"].model[0]));
                 glUniform1i(object_id_uniform, CAMERA);
 
-                if(colisao())
+                bool paredes = camera_position_c.z < -24.0f || camera_position_c.x < -74.0f || camera_position_c.x > 24.0f;
+                paredes = paredes || (camera_position_c.z > 24   && (camera_position_c.x > 3    ||  camera_position_c.x < -3)  && camera_position_c.z < 26);
+                paredes = paredes || (camera_position_c.x < -24) && camera_position_c.z  < 25;
+                paredes = paredes || (camera_position_c.z > 74   && (camera_position_c.x < -54  ||  camera_position_c.x > -46) && camera_position_c.z < 76);
+                paredes = paredes || (camera_position_c.x > -26  && camera_position_c.z > 76 );
+
+
+                if(colisao(camera_position_c, camera_view_vector) || paredes)
                 {
                     passos -= playermovex*camera_view_vector*glm::vec4(1.0f,0.0f,1.0f,1.0f)*playerspeed*deltatime;
                     camera_position_c -= playermovex*camera_view_vector*glm::vec4(1.0f,0.0f,1.0f,1.0f)*playerspeed*deltatime;
                 }
+
 
             }
             if (playermovey != 0){
@@ -892,18 +1106,25 @@ int main(int argc, char* argv[])
                 camera_position_c += playermovey*u*glm::vec4(1.0f,0.0f,1.0f,1.0f)*playerspeed*deltatime; //vec4 para não se mover para cima, zerando a componente Y
 
                 // Desenhamos o modelo da esfera
-                g_VirtualScene["camera"].model[0] =  Matrix_Translate(1.0f,0.0f,-10.0f)
-                            * Matrix_Translate(passos.x, passos.y, passos.z);
-                            //* Matrix_Translate(x, -y, z);
+                g_VirtualScene["camera"].model[0] = Matrix_Translate(0.0f,y_obj_camera,z_camera)
+                     * Matrix_Translate(passos.x, passos.y, passos.z);
 
                 glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(g_VirtualScene["camera"].model[0]));
                 glUniform1i(object_id_uniform, CAMERA);
 
-                if(colisao())
+                bool paredes = camera_position_c.z < -24.0f || camera_position_c.x < -74.0f || camera_position_c.x > 24.0f;
+                paredes = paredes || (camera_position_c.z > 24   && (camera_position_c.x > 3    ||  camera_position_c.x < -3)  && camera_position_c.z < 26);
+                paredes = paredes || (camera_position_c.x < -24) && camera_position_c.z  < 25;
+                paredes = paredes || (camera_position_c.z > 74   && (camera_position_c.x < -54  ||  camera_position_c.x > -46) && camera_position_c.z < 76);
+                paredes = paredes || (camera_position_c.x > -26  && camera_position_c.z > 76 );
+
+                if(colisao(camera_position_c, camera_view_vector) || paredes)
                 {
                     passos -= playermovey*u*glm::vec4(1.0f,0.0f,1.0f,1.0f)*playerspeed*deltatime;
                     camera_position_c -= playermovey*u*glm::vec4(1.0f,0.0f,1.0f,1.0f)*playerspeed*deltatime;
                 }
+
+
             }
 
             //Gravidade aplicada no jogador (por enquanto não passa do chão sem testar colisão
@@ -911,6 +1132,20 @@ int main(int argc, char* argv[])
             {
                 camera_position_c += glm::vec4(0.0f,-15.0f,0.0f,0.0f)*deltatime;
             }
+
+            if(g_LeftMouseButtonPressed)
+            {
+                std::string selecionado = clique(camera_position_c, camera_view_vector);
+                if(selecionado.compare("bunny") == 0)
+                {
+                    g_VirtualScene["bunny"].clicado = true;
+                }
+                else if(selecionado.compare("fly") == 0)
+                {
+                    g_VirtualScene["fly"].clicado = true;
+                }
+            }
+
             glm::mat4 view = Matrix_Camera_View(camera_position_c, camera_view_vector, camera_up_vector);
 
             // Agora computamos a matriz de Projeção.

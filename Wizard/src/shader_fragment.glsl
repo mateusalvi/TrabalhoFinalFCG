@@ -166,8 +166,8 @@ void main()
     else if ( object_id == CYLINDER)
     {
         // Coordenadas de textura do plano, obtidas do arquivo OBJ.
-        U = texcoords.x*3;
-        V = texcoords.y*7;
+        U = texcoords.x;
+        V = texcoords.y;
     }
     else if ( object_id == BOOK)
     {
@@ -178,8 +178,17 @@ void main()
     else if ( object_id == FLY)
     {
         // Coordenadas de textura do plano, obtidas do arquivo OBJ.
-        U = texcoords.x;
-        V = texcoords.y;
+        float minx = bbox_min.x;
+        float maxx = bbox_max.x;
+
+        float miny = bbox_min.y;
+        float maxy = bbox_max.y;
+
+        float minz = bbox_min.z;
+        float maxz = bbox_max.z;
+
+        U = (position_model.x - minx)/(maxx - minx);
+        V = (position_model.y - miny)/(maxy - miny);
     }
     else if ( object_id == PHONG)
     {
@@ -220,7 +229,7 @@ void main()
     }
     else if(object_id == CYLINDER)
     {
-        color = texture(TextureImage1, vec2(U,V)).rgb * (lambert + 0.1);
+        color = texture(TextureImage3, vec2(U,V)).rgb * (lambert + 0.1);
     }
     else if(object_id == BOOK)
     {
