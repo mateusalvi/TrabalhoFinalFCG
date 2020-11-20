@@ -13,7 +13,7 @@ in vec4 position_model;
 // Coordenadas de textura obtidas do arquivo OBJ (se existirem!)
 in vec2 texcoords;
 
-in vec3 colorg;
+in vec3 colorg; // Gourad shading recebido do shader_vertex
 
 // Matrizes computadas no código C++ e enviadas para a GPU
 uniform mat4 model;
