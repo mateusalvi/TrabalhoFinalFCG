@@ -448,7 +448,7 @@ void TextRendering_Missao(GLFWwindow* window)
 
 void TextRendering_Fim(GLFWwindow* window)
 {
-    TextRendering_PrintString(window, "Voce consegui escapar! Pressione ESC para fechar o jogo", -0.9f, 0.7f, 2.5f);
+    TextRendering_PrintString(window, "Voce conseguiu escapar! Pressione ESC para fechar o jogo", -0.9f, 0.7f, 2.5f);
 }
 
 int main(int argc, char* argv[])
