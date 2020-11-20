@@ -13,6 +13,8 @@ in vec4 position_model;
 // Coordenadas de textura obtidas do arquivo OBJ (se existirem!)
 in vec2 texcoords;
 
+in vec3 colorg;
+
 // Matrizes computadas no código C++ e enviadas para a GPU
 uniform mat4 model;
 uniform mat4 view;
@@ -194,7 +196,7 @@ void main()
     // Equação de Iluminação
     float lambert = max(0,dot(n,l));
 
-    color = Kd0 * I * (lambert + 0.01);
+    color = Kd0 * I * (lambert + 0.05);
 
     //termo de phong para adicionar reflexo nos objetos desejados
     vec3 luz = vec3(1.0,1.0,1.0);
@@ -226,8 +228,7 @@ void main()
     }
     else if(object_id == FLY)
     {
-        vec3 phong = (lambert + 0.1) + I * vec3(10.0,10.0,10.0) * pow(max(0, angulo_incidencia),10);
-        color = texture(TextureImage4, vec2(U,V)).rgb * phong;
+        color = texture(TextureImage4, vec2(U,V)).rgb * colorg;
     }
     else if(object_id == PHONG)
     {
